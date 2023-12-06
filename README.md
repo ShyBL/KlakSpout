@@ -1,13 +1,17 @@
 KlakSpout
 =========
 
-![gif](https://user-images.githubusercontent.com/343936/124232423-993f6c00-db4c-11eb-80d3-4c660a2025d9.gif)
-![gif](https://user-images.githubusercontent.com/343936/124217164-c4b55d00-db32-11eb-88f1-735a04bfb235.gif)
-
 **KlakSpout** is a Unity plugin that allows Unity to send/receive video streams
 using the [Spout] system.
 
 [Spout]: http://spout.zeal.co/
+
+### Note
+**This fork is a temporary solution** for a problem with Unity 2022 and later where Spout is not accepted. This fork will be removed as soon as the original repository is fixed.
+
+## Installation URL for UPM
+`https://github.com/witalosk/KlakSpout.git?path=Packages/jp.keijiro.klak.spout`
+
 
 System requirements
 -------------------
@@ -17,46 +21,6 @@ System requirements
 
 Currently, KlakSpout only supports Direct3D 11 and 12. You can't use other
 graphics APIs like OpenGL or Vulkan.
-
-How to install
---------------
-
-This package uses the [scoped registry] feature to resolve package dependencies.
-Please add the following sections to the manifest file (Packages/manifest.json).
-
-[scoped registry]: https://docs.unity3d.com/Manual/upm-scoped.html
-
-To the `scopedRegistries` section:
-
-```
-{
-  "name": "Keijiro",
-  "url": "https://registry.npmjs.com",
-  "scopes": [ "jp.keijiro" ]
-}
-```
-
-To the `dependencies` section:
-
-```
-"jp.keijiro.klak.spout": "2.0.3"
-```
-
-After changes, the manifest file should look like below:
-
-```
-{
-  "scopedRegistries": [
-    {
-      "name": "Keijiro",
-      "url": "https://registry.npmjs.com",
-      "scopes": [ "jp.keijiro" ]
-    }
-  ],
-  "dependencies": {
-    "jp.keijiro.klak.spout": "2.0.3",
-...
-```
 
 Spout Sender component
 ----------------------
@@ -79,7 +43,7 @@ Also note that you have to use the Texture capture method to enable alpha
 output on URP.
 
 [alpha output]:
-  https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@12.0/manual/Alpha-Output.html
+https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@12.0/manual/Alpha-Output.html
 
 Spout Receiver component
 ------------------------
@@ -100,14 +64,14 @@ You can enumerate available Spout senders using the `SpoutManager` class.
 Please check the [SourceSelector example] for further usage.
 
 [SourceSelector example]:
-  https://github.com/keijiro/KlakSpout/blob/main/Assets/Script/SourceSelector.cs
+https://github.com/keijiro/KlakSpout/blob/main/Assets/Script/SourceSelector.cs
 
 You can dynamically create a Spout sender/receiver, but you must give the
 `SpoutResources` asset (which holds references to the package assets) after
 instantiation. Please see the [benchmark examples] for detailed steps.
 
 [benchmark examples]:
-  https://github.com/keijiro/KlakSpout/blob/main/Assets/Script/SenderBenchmark.cs
+https://github.com/keijiro/KlakSpout/blob/main/Assets/Script/SenderBenchmark.cs
 
 Frequently asked questions
 --------------------------
