@@ -20,7 +20,6 @@ sealed class Receiver : System.IDisposable
     IntPtr _plugin;
     EventKicker _event;
     Texture2D _texture;
-    bool _isBgra32;
 
     #endregion
 
@@ -67,7 +66,7 @@ sealed class Receiver : System.IDisposable
 
     #region Frame update method
 
-    public void Update(bool isBgra32)
+    public void Update()
     {
         if (_plugin == IntPtr.Zero) return;
 
@@ -85,15 +84,16 @@ sealed class Receiver : System.IDisposable
         // Lazy initialization:
         // We try creating a receiver texture every frame until getting a
         // correct one.
-        if (_texture == null && data.texturePointer != IntPtr.Zero || _isBgra32 != isBgra32)
+        if (_texture == null && data.texturePointer != IntPtr.Zero)
         {
-            _texture = isBgra32
-                ? Texture2D.CreateExternalTexture((int)data.width, (int)data.height, TextureFormat.BGRA32, false, true, data.texturePointer)
-                : Texture2D.CreateExternalTexture((int)data.width, (int)data.height, TextureFormat.RGBA32, false, false, data.texturePointer);
+            uint dxgiFormat = (uint)data.textureFormat;
+            TextureFormat format = DXGIToTextureFormat.Convert((DXGIFormat)dxgiFormat);
             
-            _isBgra32 = isBgra32;
+            _texture = Texture2D.CreateExternalTexture
+            ((int)data.width, (int)data.height, format,
+                false, false, data.texturePointer);
         }
-
+        
         // Update event for the render thread
         _event.IssuePluginEvent(EventID.UpdateReceiver);
     }
