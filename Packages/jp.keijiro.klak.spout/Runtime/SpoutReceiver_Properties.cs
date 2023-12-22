@@ -10,15 +10,10 @@ partial class SpoutReceiver
     #region Spout source
 
     [SerializeField] string _sourceName = null;
-    [SerializeField] bool _isBgra32 = false;
 
     public string sourceName
       { get => _sourceName;
         set => ChangeSourceName(value); }
-    
-    public bool isBgra32
-      { get => _isBgra32;
-        set => _isBgra32 = value; }
 
     void ChangeSourceName(string name)
     {

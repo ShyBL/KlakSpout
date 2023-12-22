@@ -8,7 +8,6 @@ namespace Klak.Spout.Editor {
 sealed class SpoutReceiverEditor : UnityEditor.Editor
 {
     SerializedProperty _sourceName;
-    SerializedProperty _isBgra32;
     SerializedProperty _targetTexture;
     SerializedProperty _targetRenderer;
     SerializedProperty _targetMaterialProperty;
@@ -65,7 +64,6 @@ sealed class SpoutReceiverEditor : UnityEditor.Editor
     {
         var finder = new PropertyFinder(serializedObject);
         _sourceName = finder["_sourceName"];
-        _isBgra32 = finder["_isBgra32"];
         _targetTexture = finder["_targetTexture"];
         _targetRenderer = finder["_targetRenderer"];
         _targetMaterialProperty = finder["_targetMaterialProperty"];
@@ -88,8 +86,6 @@ sealed class SpoutReceiverEditor : UnityEditor.Editor
             ShowSourceNameDropdown(rect);
 
         EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.PropertyField(_isBgra32);
         
         // Target texture/renderer
         EditorGUILayout.PropertyField(_targetTexture);

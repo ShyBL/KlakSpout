@@ -91,7 +91,7 @@ sealed class Receiver : System.IDisposable
             
             _texture = Texture2D.CreateExternalTexture
             ((int)data.width, (int)data.height, format,
-                false, false, data.texturePointer);
+                false, QualitySettings.activeColorSpace == ColorSpace.Linear, data.texturePointer);
         }
         
         // Update event for the render thread

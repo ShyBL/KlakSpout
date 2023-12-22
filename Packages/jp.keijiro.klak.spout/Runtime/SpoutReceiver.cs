@@ -80,7 +80,7 @@ public sealed partial class SpoutReceiver : MonoBehaviour
             _receiver = new Receiver(_sourceName);
 
         // Receiver plugin-side update
-        _receiver.Update(_isBgra32);
+        _receiver.Update();
 
         // Do nothing further if no texture is ready yet.
         if (_receiver.Texture == null) return;
