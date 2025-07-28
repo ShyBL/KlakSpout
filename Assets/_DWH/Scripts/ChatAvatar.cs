@@ -1,193 +1,169 @@
-﻿using System.Collections;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
+using System.Collections;
 
 public class ChatAvatar : MonoBehaviour
 {
-    private string username;
-    private ChatMessage messageData;
-    private float walkRadius;
-    private float walkSpeed;
-    private Vector3 originPosition;
-    private Vector3 targetPosition;
-    private bool isMoving = true;
+    // [Header("Effects Components (Assign in Prefab)")]
+    // [Tooltip("Particle system for subscription/resub events.")]
+    // public ParticleSystem subEffectParticles;
+    // [Tooltip("Particle system for bit cheers.")]
+    // public ParticleSystem cheerEffectParticles;
     
-    private TMP_Text nameTag;
-    private GameObject nameTagObject;
-    
-    public void Initialize(string user, ChatMessage message, float radius, float speed, float nameHeight)
+    private string _username;
+    private ChatMessage _messageData;
+    private float _walkRadius;
+    private float _walkSpeed;
+    private Vector3 _originPosition;
+    private Vector3 _targetPosition;
+    private Coroutine _walkCoroutine;
+    private Coroutine _timeoutCoroutine;
+
+    private TMP_Text _nameTag;
+    private ChatAvatarManager _manager;
+
+    // Called when the object is returned to the pool
+    void OnDisable()
     {
-        username = user;
-        messageData = message;
-        walkRadius = radius;
-        walkSpeed = speed;
-        originPosition = transform.position;
+        // IMPORTANT: Stop all coroutines when the object is disabled
+        if (_walkCoroutine != null) StopCoroutine(_walkCoroutine);
+        if (_timeoutCoroutine != null) StopCoroutine(_timeoutCoroutine);
+        _walkCoroutine = null;
+        _timeoutCoroutine = null;
+    }
+
+    public void Initialize(string user, ChatMessage message, float radius, float speed, float nameHeight, ChatAvatarManager manager)
+    {
+        _username = user;
+        _walkRadius = radius;
+        _walkSpeed = speed;
+        _originPosition = transform.position;
+        _manager = manager;
+
+        if (_nameTag == null) CreateNameTag(nameHeight);
         
-        CreateNameTag(nameHeight);
-        ApplyAvatarEffects();
+        Refresh(message);
+
         SetNewTarget();
-        StartCoroutine(WalkBehavior());
+        _walkCoroutine = StartCoroutine(WalkBehavior());
     }
     
-    void ApplyAvatarEffects()
+    public void Refresh(ChatMessage message)
     {
-        // Handle different message types
-        switch (messageData.type)
+        _messageData = message;
+        
+        ApplyAvatarAppearance();
+        ApplyMessageEffects();
+
+        if (_timeoutCoroutine != null) StopCoroutine(_timeoutCoroutine);
+        _timeoutCoroutine = StartCoroutine(AvatarTimeout());
+    }
+
+    #region Appearance and Effects
+    void ApplyAvatarAppearance()
+    {
+        if (_nameTag == null) return;
+        _nameTag.text = _username;
+
+        if (_messageData.isBroadcaster) _nameTag.color = Color.red;
+        else if (_messageData.isModerator) _nameTag.color = Color.green;
+        else if (_messageData.isVip) _nameTag.color = Color.magenta;
+        else if (_messageData.isSubscriber) _nameTag.color = Color.cyan;
+        else _nameTag.color = Color.white;
+    }
+
+    void ApplyMessageEffects()
+    {
+        switch (_messageData.type)
         {
-            case MessageType.RegularChat:
-                // TODO: Standard avatar appearance
-                break;
-                
-            case MessageType.EmoteOnly:
-                // TODO: Add emote effects to avatar
-                // Example: Floating emote particles, bounce animation
-                break;
-                
             case MessageType.BitsCheer:
-                // TODO: Add bits celebration effects
-                // Example: Golden glow, coin particles, celebration animation
-                // Could scale effects based on messageData.bitsAmount
+                PlayCheerEffect(_messageData.bitsAmount);
                 break;
                 
             case MessageType.UserNotice:
                 HandleUserNoticeEffects();
                 break;
         }
-        
-        // Apply badge-based effects
-        ApplyBadgeEffects();
-        
-        // Handle emotes if present
-        if (messageData.hasEmotes)
-        {
-            // TODO: Add emote-specific effects
-            // Example: Display emotes above avatar, emote trail
-            Debug.Log($"{username} used {messageData.emotes.Length} emotes");
-        }
     }
-    
+
     void HandleUserNoticeEffects()
     {
-        switch (messageData.noticeType)
+        switch (_messageData.noticeType)
         {
             case UserNoticeType.Sub:
             case UserNoticeType.Resub:
-                // TODO: Add subscription celebration effects
-                // Example: Confetti particles, crown effect, special animation
-                // For resub, could show month count: messageData.subMonths
+                PlaySubscriptionEffect(_messageData.subMonths);
                 break;
-                
+            
             case UserNoticeType.SubGift:
-                // TODO: Add gift celebration effects
-                // Example: Present box animation, gift particles
-                break;
-                
             case UserNoticeType.Raid:
-                // TODO: Add raid effects
-                // Example: Invasion particles, army banner
-                // Could scale based on messageData.raidViewers
-                break;
-                
             case UserNoticeType.BitsBadgeTier:
-                // TODO: Add bits badge tier celebration
-                // Example: Badge upgrade animation, achievement effect
+                Debug.Log($"Triggering effect for UserNotice: {_messageData.noticeType}");
                 break;
         }
     }
-    
-    void ApplyBadgeEffects()
+
+    public void PlaySubscriptionEffect(int months)
     {
-        if (messageData.isBroadcaster)
-        {
-            // TODO: Apply broadcaster effects
-            // Example: Crown above nameTag, special color, larger size
-            nameTag.color = Color.red; // Temporary broadcaster indicator
-        }
-        else if (messageData.isModerator)
-        {
-            // TODO: Apply moderator effects
-            // Example: Sword icon, mod badge, green nameTag
-            nameTag.color = Color.green; // Temporary moderator indicator
-        }
-        else if (messageData.isVip)
-        {
-            // TODO: Apply VIP effects
-            // Example: Diamond icon, purple nameTag, special glow
-            nameTag.color = Color.magenta; // Temporary VIP indicator
-        }
-        else if (messageData.isSubscriber)
-        {
-            // TODO: Apply subscriber effects
-            // Example: Sub badge, special color, subscriber perks
-            nameTag.color = Color.cyan; // Temporary subscriber indicator
-        }
-        else
-        {
-            // Regular user - random color as before
-            nameTag.color = Random.ColorHSV(0f, 1f, 0.7f, 1f, 0.8f, 1f);
-        }
-        
-        // TODO: Handle additional badges from messageData.badges array
-        // Example: Parse custom badges, channel-specific badges, etc.
+        Debug.Log($"Playing subscription effect for {_username} ({months} months).");
+        // if (subEffectParticles != null) subEffectParticles.Play();
     }
     
+    public void PlayCheerEffect(int amount)
+    {
+        Debug.Log($"Playing cheer effect for {_username} ({amount} bits).");
+        // if (cheerEffectParticles != null) cheerEffectParticles.Play();
+    }
+    #endregion
+
+    #region Movement and Lifetime
     void CreateNameTag(float height)
     {
-        // Create name tag above avatar
-        nameTagObject = new GameObject($"NameTag_{username}");
-        nameTagObject.transform.SetParent(transform);
+        GameObject nameTagObject = new GameObject($"NameTag_{_username}");
+        nameTagObject.transform.SetParent(transform, false);
         nameTagObject.transform.localPosition = Vector3.up * height;
         
-        // Add TextMeshPro component
-        nameTag = nameTagObject.AddComponent<TextMeshPro>();
-        nameTag.text = username;
-        nameTag.fontSize = 2f;
-        nameTag.alignment = TextAlignmentOptions.Center;
-        // Color will be set in ApplyAvatarEffects() based on user status
+        _nameTag = nameTagObject.AddComponent<TextMeshPro>();
+        _nameTag.fontSize = 2f;
+        _nameTag.alignment = TextAlignmentOptions.Center;
         
-        // Make name tag always face camera
         var lookAt = nameTagObject.AddComponent<LookAtConstraint>();
-        lookAt.AddSource(new ConstraintSource { sourceTransform = Camera.main.transform, weight = 1f });
+        var source = new ConstraintSource { sourceTransform = Camera.main.transform, weight = 1f };
+        lookAt.AddSource(source);
         lookAt.constraintActive = true;
     }
-    
+
     void SetNewTarget()
     {
-        // Generate random point within walk radius from origin
-        Vector2 randomCircle = Random.insideUnitCircle * walkRadius;
-        targetPosition = originPosition + new Vector3(randomCircle.x, 0, randomCircle.y);
+        Vector2 randomCircle = Random.insideUnitCircle * _walkRadius;
+        _targetPosition = _originPosition + new Vector3(randomCircle.x, 0, randomCircle.y);
     }
-    
+
     IEnumerator WalkBehavior()
     {
-        while (isMoving)
+        while (true)
         {
-            // Move towards target
-            while (Vector3.Distance(transform.position, targetPosition) > 0.5f)
+            while (Vector3.Distance(transform.position, _targetPosition) > 0.5f)
             {
-                Vector3 direction = (targetPosition - transform.position).normalized;
-                transform.position += direction * walkSpeed * Time.deltaTime;
+                Vector3 direction = (_targetPosition - transform.position).normalized;
+                transform.position += direction * _walkSpeed * Time.deltaTime;
                 
-                // Rotate to face movement direction
-                if (direction != Vector3.zero)
-                {
-                    transform.rotation = Quaternion.LookRotation(direction);
-                }
+                if (direction != Vector3.zero) transform.rotation = Quaternion.LookRotation(direction);
                 
                 yield return null;
             }
             
-            // Brief pause at destination
-            yield return new WaitForSeconds(Random.Range(0.5f, 2f));
-            
-            // Set new target
+            yield return new WaitForSeconds(Random.Range(2f, 5f));
             SetNewTarget();
         }
     }
-    
-    void OnDestroy()
+
+    IEnumerator AvatarTimeout()
     {
-        isMoving = false;
+        yield return new WaitForSeconds(_manager.avatarTimeout);
+        Debug.Log($"Avatar for {_username} timed out and is being returned to the pool.");
+        _manager.RemoveAvatar(_username);
     }
+    #endregion
 }

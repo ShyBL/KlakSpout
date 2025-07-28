@@ -4,203 +4,228 @@ using UnityEngine;
 public class ChatAvatarManager : MonoBehaviour
 {
     [Header("Avatar Prefabs")]
-    public GameObject avatarPrefab;
-    // TODO: Add special avatar prefabs
-    // public GameObject subscriberAvatarPrefab;
-    // public GameObject moderatorAvatarPrefab;
-    // public GameObject vipAvatarPrefab;
-    // public GameObject broadcasterAvatarPrefab;
-    // public GameObject bitsCheerAvatarPrefab;
+    [Tooltip("Default avatar for regular users.")]
+    public GameObject defaultAvatarPrefab;
+    [Tooltip("Special avatar for the broadcaster.")]
+    public GameObject broadcasterAvatarPrefab;
+    [Tooltip("Special avatar for moderators.")]
+    public GameObject moderatorAvatarPrefab;
+    [Tooltip("Special avatar for VIPs.")]
+    public GameObject vipAvatarPrefab;
+    [Tooltip("Special avatar for subscribers.")]
+    public GameObject subscriberAvatarPrefab;
+    
+    [Header("Pooling")]
+    [Tooltip("The number of avatars of each type to create on startup.")]
+    public int initialPoolSize = 10;
+    
+    [Header("Avatar Configuration")]
+    [Tooltip("The maximum number of active avatars allowed in the scene at once.")]
+    public int maxAvatars = 50;
+    [Tooltip("The time in seconds before an inactive avatar is removed.")]
+    public float avatarTimeout = 300f;
+
+    [Header("Avatar Movement")]
     public float spawnRadius = 10f;
     public float walkSpeed = 2f;
     public float walkRadius = 15f;
-    
+
     [Header("Avatar Display")]
     public float nameTagHeight = 2f;
-    
-    private Dictionary<string, GameObject> activeAvatars = new Dictionary<string, GameObject>();
-    private TwitchChatClient chatClient;
-    
+
+    // --- Pooling System ---
+    private Dictionary<GameObject, Queue<GameObject>> _avatarPools;
+    private readonly Dictionary<string, GameObject> _activeAvatars = new Dictionary<string, GameObject>();
+    private readonly List<string> _avatarSpawnOrder = new List<string>();
+    private TwitchChatClient _chatClient;
+
+    #region Unity Lifecycle & Pool Initialization
     void Start()
     {
-        chatClient = FindObjectOfType<TwitchChatClient>();
-        if (chatClient == null)
+        InitializePools();
+        
+        _chatClient = FindObjectOfType<TwitchChatClient>();
+        if (_chatClient == null)
         {
-            Debug.LogError("TwitchChatClient not found!");
+            Debug.LogError("TwitchChatClient not found in the scene!");
+            this.enabled = false;
             return;
         }
-        
         TwitchChatClient.OnMessageReceived += OnChatMessage;
     }
-    
+
+    void InitializePools()
+    {
+        _avatarPools = new Dictionary<GameObject, Queue<GameObject>>();
+        var prefabs = new List<GameObject> { defaultAvatarPrefab, broadcasterAvatarPrefab, moderatorAvatarPrefab, vipAvatarPrefab, subscriberAvatarPrefab };
+
+        foreach (var prefab in prefabs)
+        {
+            if (prefab == null) continue;
+            
+            var pool = new Queue<GameObject>();
+            for (int i = 0; i < initialPoolSize; i++)
+            {
+                var avatar = CreateNewAvatarForPool(prefab);
+                pool.Enqueue(avatar);
+            }
+            _avatarPools[prefab] = pool;
+        }
+    }
+
+    GameObject CreateNewAvatarForPool(GameObject prefab)
+    {
+        var avatar = Instantiate(prefab, transform);
+        var identity = avatar.GetComponent<AvatarPoolIdentity>();
+        if (identity == null)
+        {
+            identity = avatar.AddComponent<AvatarPoolIdentity>();
+            Debug.LogWarning($"Prefab '{prefab.name}' was missing AvatarPoolIdentity component. It has been added automatically.");
+        }
+        identity.OriginalPrefab = prefab;
+        avatar.SetActive(false);
+        return avatar;
+    }
+
     void OnDestroy()
     {
-        TwitchChatClient.OnMessageReceived -= OnChatMessage;
+        if (_chatClient != null)
+        {
+            TwitchChatClient.OnMessageReceived -= OnChatMessage;
+        }
     }
-    
+    #endregion
+
     void OnChatMessage(ChatMessage message)
     {
+        if (string.IsNullOrEmpty(message.username)) return;
+
         string username = message.username.ToLower();
-        
-        // Check if avatar already exists
-        if (activeAvatars.ContainsKey(username))
+
+        if (_activeAvatars.TryGetValue(username, out GameObject existingAvatarGO))
         {
-            Debug.Log($"Avatar for {username} already exists, ignoring");
-            // TODO: Could update existing avatar based on new message data
-            // Example: Change avatar appearance if user gained subscriber status
+            var existingAvatar = existingAvatarGO.GetComponent<ChatAvatar>();
+            if (existingAvatar != null)
+            {
+                existingAvatar.Refresh(message);
+                _avatarSpawnOrder.Remove(username);
+                _avatarSpawnOrder.Add(username);
+            }
             return;
         }
-        
-        // Handle different message types
-        switch (message.type)
+
+        if (_activeAvatars.Count >= maxAvatars)
         {
-            case MessageType.RegularChat:
-                SpawnAvatar(username, message);
-                break;
-                
-            case MessageType.EmoteOnly:
-                // TODO: Spawn avatar with special emote-focused appearance
-                // Example: Larger avatar, emote particles, different color
-                SpawnAvatar(username, message);
-                break;
-                
-            case MessageType.BitsCheer:
-                // TODO: Spawn avatar with bits celebration effects
-                // Example: Golden avatar, coin particles, special animation
-                SpawnAvatar(username, message);
-                Debug.Log($"{username} cheered {message.bitsAmount} bits!");
-                break;
-                
-            case MessageType.UserNotice:
-                HandleUserNotice(message);
-                break;
-                
-            case MessageType.System:
-                // TODO: System messages might not need avatars
-                // Example: Display system notification UI instead
-                Debug.Log($"System message: {message.message}");
-                break;
+            RemoveOldestAvatar();
         }
+
+        ActivateAvatar(username, message);
     }
-    
-    void HandleUserNotice(ChatMessage message)
+
+    void ActivateAvatar(string username, ChatMessage message)
     {
-        string username = message.username.ToLower();
-        
-        switch (message.noticeType)
+        GameObject prefabToUse = SelectAvatarPrefab(message);
+        if (prefabToUse == null)
         {
-            case UserNoticeType.Sub:
-                // TODO: Spawn special subscriber celebration avatar
-                // Example: Crown effect, confetti, special subscriber prefab
-                SpawnAvatar(username, message);
-                Debug.Log($"{username} just subscribed!");
-                break;
-                
-            case UserNoticeType.Resub:
-                // TODO: Spawn avatar with resub celebration
-                // Example: Larger crown, month counter, loyalty effects
-                SpawnAvatar(username, message);
-                Debug.Log($"{username} resubscribed for {message.subMonths} months!");
-                break;
-                
-            case UserNoticeType.SubGift:
-                // TODO: Spawn avatar with gift celebration
-                // Example: Present box effect, gifting animation
-                SpawnAvatar(username, message);
-                Debug.Log($"{username} gifted a subscription!");
-                break;
-                
-            case UserNoticeType.Raid:
-                // TODO: Spawn multiple raider avatars or special raid leader
-                // Example: Army of mini-avatars, raid banner, invasion effect
-                SpawnAvatar(username, message);
-                Debug.Log($"Raid from {message.raidFrom} with {message.raidViewers} viewers!");
-                break;
-                
-            case UserNoticeType.BitsBadgeTier:
-                // TODO: Spawn avatar with new bits badge celebration
-                // Example: Badge upgrade animation, achievement popup
-                SpawnAvatar(username, message);
-                Debug.Log($"{username} earned a new bits badge!");
-                break;
-                
-            case UserNoticeType.Other:
-                // TODO: Handle other notice types
-                SpawnAvatar(username, message);
-                break;
+            Debug.LogWarning("No suitable avatar prefab found. Cannot spawn avatar.");
+            return;
         }
-    }
-    
-    void SpawnAvatar(string username, ChatMessage message)
-    {
-        // Random spawn position within spawn radius
+
+        GameObject avatarGO = GetFromPool(prefabToUse);
+        
         Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-        Vector3 spawnPosition = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
-        
-        // TODO: Select avatar prefab based on user status
-        GameObject prefabToUse = avatarPrefab;
-        
-        // Check user badges and status
-        if (message.isBroadcaster)
+        avatarGO.transform.position = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+        avatarGO.transform.rotation = Quaternion.identity;
+        avatarGO.name = $"Avatar_{username}";
+
+        var avatarScript = avatarGO.GetComponent<ChatAvatar>();
+        if (avatarScript != null)
         {
-            // TODO: Use special broadcaster avatar prefab
-            // Example: Crown, special colors, larger size
-            prefabToUse = avatarPrefab; // broadcasterAvatarPrefab;
+            avatarScript.Initialize(username, message, walkRadius, walkSpeed, nameTagHeight, this);
         }
-        else if (message.isModerator)
-        {
-            // TODO: Use moderator avatar prefab
-            // Example: Sword icon, mod badge, special effects
-            prefabToUse = avatarPrefab; // moderatorAvatarPrefab;
-        }
-        else if (message.isVip)
-        {
-            // TODO: Use VIP avatar prefab
-            // Example: Diamond badge, premium effects
-            prefabToUse = avatarPrefab; // vipAvatarPrefab;
-        }
-        else if (message.isSubscriber)
-        {
-            // TODO: Use subscriber avatar prefab
-            // Example: Sub badge, different color, subscriber perks
-            prefabToUse = avatarPrefab; // subscriberAvatarPrefab;
-        }
-        
-        GameObject avatar = Instantiate(prefabToUse, spawnPosition, Quaternion.identity, transform);
-        avatar.name = $"Avatar_{username}";
-        
-        // Add walking behavior
-        ChatAvatar avatarScript = avatar.GetComponent<ChatAvatar>();
-        if (avatarScript == null)
-        {
-            avatarScript = avatar.AddComponent<ChatAvatar>();
-        }
-        
-        avatarScript.Initialize(username, message, walkRadius, walkSpeed, nameTagHeight);
-        
-        // Store reference
-        activeAvatars[username] = avatar;
-        
-        Debug.Log($"Spawned avatar for {username} at {spawnPosition}");
+
+        _activeAvatars[username] = avatarGO;
+        _avatarSpawnOrder.Add(username);
     }
     
+    #region Pooling Logic
+    private GameObject GetFromPool(GameObject prefab)
+    {
+        if (!_avatarPools.ContainsKey(prefab))
+        {
+             Debug.LogError($"Prefab {prefab.name} does not have an initialized pool.");
+             return null;
+        }
+        var pool = _avatarPools[prefab];
+        GameObject avatar;
+
+        if (pool.Count > 0)
+        {
+            avatar = pool.Dequeue();
+        }
+        else
+        {
+            avatar = CreateNewAvatarForPool(prefab);
+        }
+
+        avatar.SetActive(true);
+        return avatar;
+    }
+
+    private void ReturnToPool(GameObject avatar)
+    {
+        var identity = avatar.GetComponent<AvatarPoolIdentity>();
+        if (identity != null && _avatarPools.ContainsKey(identity.OriginalPrefab))
+        {
+            avatar.SetActive(false);
+            _avatarPools[identity.OriginalPrefab].Enqueue(avatar);
+        }
+        else
+        {
+            Debug.LogWarning($"Avatar {avatar.name} is not a pooled object. Destroying instead.");
+            Destroy(avatar);
+        }
+    }
+    #endregion
+
+    #region Avatar Management
     public void RemoveAvatar(string username)
     {
         username = username.ToLower();
-        if (activeAvatars.ContainsKey(username))
+        if (_activeAvatars.TryGetValue(username, out GameObject avatar))
         {
-            Destroy(activeAvatars[username]);
-            activeAvatars.Remove(username);
+            ReturnToPool(avatar); 
+            _activeAvatars.Remove(username);
+            _avatarSpawnOrder.Remove(username);
         }
     }
     
+    private void RemoveOldestAvatar()
+    {
+        if (_avatarSpawnOrder.Count > 0)
+        {
+            string oldestUser = _avatarSpawnOrder[0];
+            Debug.Log($"Max avatars reached. Returning oldest avatar to pool: {oldestUser}");
+            RemoveAvatar(oldestUser);
+        }
+    }
+
     public void ClearAllAvatars()
     {
-        foreach (var avatar in activeAvatars.Values)
+        var usernames = new List<string>(_activeAvatars.Keys);
+        foreach (var username in usernames)
         {
-            if (avatar != null)
-                Destroy(avatar);
+            RemoveAvatar(username);
         }
-        activeAvatars.Clear();
     }
+
+    GameObject SelectAvatarPrefab(ChatMessage message)
+    {
+        if (message.isBroadcaster && broadcasterAvatarPrefab != null) return broadcasterAvatarPrefab;
+        if (message.isModerator && moderatorAvatarPrefab != null) return moderatorAvatarPrefab;
+        if (message.isVip && vipAvatarPrefab != null) return vipAvatarPrefab;
+        if (message.isSubscriber && subscriberAvatarPrefab != null) return subscriberAvatarPrefab;
+        return defaultAvatarPrefab;
+    }
+    #endregion
 }
