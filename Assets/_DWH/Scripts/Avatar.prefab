@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3051859667839224680}
   - component: {fileID: 6894955795847494936}
-  - component: {fileID: 1166460791695666637}
+  - component: {fileID: 8632552097785933095}
   m_Layer: 3
   m_Name: Avatar
   m_TagString: Untagged
@@ -163,7 +163,7 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.00004179147, y: 0.0044219103, z: 0.004826547}
     m_Extent: {x: 0.0077036107, y: 0.009117058, z: 0.008275718}
   m_DirtyAABB: 0
---- !u!114 &1166460791695666637
+--- !u!114 &8632552097785933095
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -172,6 +172,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 5637270965514506446}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d46d860a75b244e9968c3ad124510b3c, type: 3}
+  m_Script: {fileID: 11500000, guid: 94157b0c456f4b95b8347a06ec8344a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
