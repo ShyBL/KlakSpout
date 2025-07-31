@@ -1,15 +1,17 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 public class AvatarPoolManager : MonoBehaviour
 {
     [Header("Pool Settings")]
     [SerializeField] private GameObject avatarPrefab;
-    [SerializeField] private int initialPoolSize = 50;
-    [SerializeField] private int maxPoolSize = 100;
+    [SerializeField] private int defaultCapacity = 10;
+    [SerializeField] private int maxSize = 100;
+    [SerializeField] private bool collectionCheck = true;
     [SerializeField] private Transform poolParent;
     
-    private Queue<GameObject> availableAvatars = new Queue<GameObject>();
+    private ObjectPool<GameObject> avatarPool;
     private HashSet<GameObject> activeAvatars = new HashSet<GameObject>();
     
     private static AvatarPoolManager instance;
@@ -49,16 +51,22 @@ public class AvatarPoolManager : MonoBehaviour
             poolParent.SetParent(transform);
         }
         
-        // Pre-instantiate avatars
-        for (int i = 0; i < initialPoolSize; i++)
-        {
-            CreateNewAvatar();
-        }
+        // Initialize Unity's ObjectPool
+        avatarPool = new ObjectPool<GameObject>(
+            createFunc: CreateAvatar,
+            actionOnGet: OnGetAvatar,
+            actionOnRelease: OnReleaseAvatar,
+            actionOnDestroy: OnDestroyAvatar,
+            collectionCheck: collectionCheck,
+            defaultCapacity: defaultCapacity,
+            maxSize: maxSize
+        );
         
-        Debug.Log($"Avatar pool initialized with {initialPoolSize} avatars");
+        Debug.Log($"Avatar pool initialized with capacity: {defaultCapacity}, max size: {maxSize}");
     }
     
-    private GameObject CreateNewAvatar()
+    // Pool callback: Create new avatar instance
+    private GameObject CreateAvatar()
     {
         if (avatarPrefab == null)
         {
@@ -68,57 +76,59 @@ public class AvatarPoolManager : MonoBehaviour
         
         GameObject avatar = Instantiate(avatarPrefab, poolParent);
         avatar.SetActive(false);
-        availableAvatars.Enqueue(avatar);
         
         return avatar;
     }
     
-    public GameObject GetAvatar()
+    // Pool callback: When avatar is retrieved from pool
+    private void OnGetAvatar(GameObject avatar)
     {
-        GameObject avatar;
-        
-        if (availableAvatars.Count > 0)
-        {
-            avatar = availableAvatars.Dequeue();
-        }
-        else if (activeAvatars.Count + availableAvatars.Count < maxPoolSize)
-        {
-            avatar = CreateNewAvatar();
-            if (avatar != null)
-            {
-                availableAvatars.Dequeue(); // Remove from queue since we just added it
-            }
-        }
-        else
-        {
-            Debug.LogWarning("Avatar pool is at maximum capacity!");
-            return null;
-        }
-        
         if (avatar != null)
         {
             avatar.SetActive(true);
             activeAvatars.Add(avatar);
         }
-        
-        return avatar;
+    }
+    
+    // Pool callback: When avatar is returned to pool
+    private void OnReleaseAvatar(GameObject avatar)
+    {
+        if (avatar != null)
+        {
+            activeAvatars.Remove(avatar);
+            ResetAvatarState(avatar);
+            avatar.SetActive(false);
+            avatar.transform.SetParent(poolParent);
+        }
+    }
+    
+    // Pool callback: When avatar is destroyed (pool overflow)
+    private void OnDestroyAvatar(GameObject avatar)
+    {
+        if (avatar != null)
+        {
+            activeAvatars.Remove(avatar);
+            Destroy(avatar);
+        }
+    }
+    
+    public GameObject GetAvatar()
+    {
+        return avatarPool.Get();
     }
     
     public void ReturnAvatar(GameObject avatar)
     {
         if (avatar == null) return;
         
+        // Only release if it's actually from our pool
         if (activeAvatars.Contains(avatar))
         {
-            activeAvatars.Remove(avatar);
-            
-            // Reset avatar state
-            ResetAvatarState(avatar);
-            
-            // Deactivate and return to pool
-            avatar.SetActive(false);
-            avatar.transform.SetParent(poolParent);
-            availableAvatars.Enqueue(avatar);
+            avatarPool.Release(avatar);
+        }
+        else
+        {
+            Debug.LogWarning("Trying to return avatar that's not from this pool!");
         }
     }
     
@@ -148,21 +158,62 @@ public class AvatarPoolManager : MonoBehaviour
         return activeAvatars.Count;
     }
     
-    public int GetAvailableCount()
+    public int GetInactiveCount()
     {
-        return availableAvatars.Count;
+        return avatarPool.CountInactive;
     }
     
-    public int GetTotalPoolSize()
+    public int GetTotalCount()
     {
-        return activeAvatars.Count + availableAvatars.Count;
+        return avatarPool.CountAll;
+    }
+    
+    public void ClearPool()
+    {
+        // Return all active avatars to pool first
+        var activeAvatarsCopy = new HashSet<GameObject>(activeAvatars);
+        foreach (var avatar in activeAvatarsCopy)
+        {
+            ReturnAvatar(avatar);
+        }
+        
+        // Clear the pool
+        avatarPool.Clear();
+        
+        Debug.Log("Avatar pool cleared");
     }
     
     private void OnDestroy()
     {
+        // Clean up pool when manager is destroyed
+        avatarPool?.Clear();
+        
         if (instance == this)
         {
             instance = null;
+        }
+    }
+    
+    // Debug info for inspector
+    [System.Serializable]
+    public struct PoolDebugInfo
+    {
+        public int activeCount;
+        public int inactiveCount;
+        public int totalCount;
+    }
+    
+    [Header("Debug Info (Read Only)")]
+    [SerializeField] private PoolDebugInfo debugInfo;
+    
+    private void Update()
+    {
+        // Update debug info in inspector
+        if (avatarPool != null)
+        {
+            debugInfo.activeCount = activeAvatars.Count;
+            debugInfo.inactiveCount = avatarPool.CountInactive;
+            debugInfo.totalCount = avatarPool.CountAll;
         }
     }
 }
