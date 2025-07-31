@@ -1,33 +1,84 @@
-﻿using System.Collections;
+﻿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
+using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
 {
+    [Header("Despawn Settings")]
+    [SerializeField] private float despawnTimeMinutes = 10f;
+    [SerializeField] private GameObject nameTagObject;
+    
     private string username;
     private ChatMessage messageData;
-    private float walkRadius;
-    private float walkSpeed;
-    private Vector3 originPosition;
-    private Vector3 targetPosition;
-    private bool isMoving = true;
+    private DateTime lastActivityTime;
     
     private TMP_Text nameTag;
-    private GameObject nameTagObject;
+    private GameObject cameraToLook;
+    private WalkBehavior walkBehavior;
     
-    public void Initialize(string user, ChatMessage message, float radius, float speed, float nameHeight)
+    public string Username => username;
+    public DateTime LastActivityTime => lastActivityTime;
+    
+    public void Initialize(string user, ChatMessage message, Collider walkBounds, float walkSpeed, float nameHeight, GameObject cameraToLook)
     {
         username = user;
         messageData = message;
-        walkRadius = radius;
-        walkSpeed = speed;
-        originPosition = transform.position;
+        lastActivityTime = DateTime.Now;
+        this.cameraToLook = cameraToLook;
         
-        CreateNameTag(nameHeight);
+        SetupNameTag(nameHeight);
         ApplyAvatarEffects();
-        SetNewTarget();
-        StartCoroutine(WalkBehavior());
+        SetupWalkBehavior(walkBounds, walkSpeed);
+    }
+    
+    public void UpdateActivity(ChatMessage newMessage)
+    {
+        messageData = newMessage;
+        lastActivityTime = DateTime.Now;
+        
+        // Update visual effects based on new message
+        ApplyAvatarEffects();
+        
+        Debug.Log($"Updated activity for {username}");
+    }
+    
+    public bool ShouldDespawn()
+    {
+        TimeSpan timeSinceLastActivity = DateTime.Now - lastActivityTime;
+        return timeSinceLastActivity.TotalMinutes >= despawnTimeMinutes;
+    }
+    
+    public void ResetAvatar()
+    {
+        // Reset all avatar state for pooling
+        username = "";
+        lastActivityTime = DateTime.MinValue;
+        
+        // Destroy name tag if it exists
+        if (nameTagObject != null)
+        {
+            nameTagObject = null;
+            nameTag = null;
+        }
+        
+        // Reset walk behavior
+        if (walkBehavior != null)
+        {
+            walkBehavior.StopWalking();
+        }
+    }
+    
+    private void SetupWalkBehavior(Collider walkBounds, float walkSpeed)
+    {
+        walkBehavior = GetComponent<WalkBehavior>();
+        if (walkBehavior == null)
+        {
+            walkBehavior = gameObject.AddComponent<WalkBehavior>();
+        }
+        
+        walkBehavior.Initialize(walkBounds, walkSpeed);
     }
     
     void ApplyAvatarEffects()
@@ -98,6 +149,8 @@ public class ChatAvatar : MonoBehaviour
     
     void ApplyBadgeEffects()
     {
+        if (nameTag == null) return;
+        
         if (messageData.isBroadcaster)
         {
             // TODO: Apply broadcaster effects
@@ -124,7 +177,8 @@ public class ChatAvatar : MonoBehaviour
         }
         else
         {
-            // Regular user - random color as before
+            // Regular user - random color based on username for consistency
+            Random.InitState(username.GetHashCode());
             nameTag.color = Random.ColorHSV(0f, 1f, 0.7f, 1f, 0.8f, 1f);
         }
         
@@ -132,62 +186,18 @@ public class ChatAvatar : MonoBehaviour
         // Example: Parse custom badges, channel-specific badges, etc.
     }
     
-    void CreateNameTag(float height)
+    void SetupNameTag(float height)
     {
-        // Create name tag above avatar
-        nameTagObject = new GameObject($"NameTag_{username}");
-        nameTagObject.transform.SetParent(transform);
-        nameTagObject.transform.localPosition = Vector3.up * height;
-        
         // Add TextMeshPro component
-        nameTag = nameTagObject.AddComponent<TextMeshPro>();
+        nameTag = nameTagObject.GetComponent<TextMeshPro>();
         nameTag.text = username;
-        nameTag.fontSize = 2f;
-        nameTag.alignment = TextAlignmentOptions.Center;
-        // Color will be set in ApplyAvatarEffects() based on user status
         
         // Make name tag always face camera
-        var lookAt = nameTagObject.AddComponent<LookAtConstraint>();
-        lookAt.AddSource(new ConstraintSource { sourceTransform = Camera.main.transform, weight = 1f });
-        lookAt.constraintActive = true;
-    }
-    
-    void SetNewTarget()
-    {
-        // Generate random point within walk radius from origin
-        Vector2 randomCircle = Random.insideUnitCircle * walkRadius;
-        targetPosition = originPosition + new Vector3(randomCircle.x, 0, randomCircle.y);
-    }
-    
-    IEnumerator WalkBehavior()
-    {
-        while (isMoving)
+        if (cameraToLook != null)
         {
-            // Move towards target
-            while (Vector3.Distance(transform.position, targetPosition) > 0.5f)
-            {
-                Vector3 direction = (targetPosition - transform.position).normalized;
-                transform.position += direction * walkSpeed * Time.deltaTime;
-                
-                // Rotate to face movement direction
-                if (direction != Vector3.zero)
-                {
-                    transform.rotation = Quaternion.LookRotation(direction);
-                }
-                
-                yield return null;
-            }
-            
-            // Brief pause at destination
-            yield return new WaitForSeconds(Random.Range(0.5f, 2f));
-            
-            // Set new target
-            SetNewTarget();
+            var lookAt = nameTagObject.GetComponent<LookAtConstraint>();
+            lookAt.AddSource(new ConstraintSource { sourceTransform = cameraToLook.transform, weight = 1f });
+            lookAt.constraintActive = true;
         }
-    }
-    
-    void OnDestroy()
-    {
-        isMoving = false;
     }
 }

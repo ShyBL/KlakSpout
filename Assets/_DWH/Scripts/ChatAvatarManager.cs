@@ -1,25 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class ChatAvatarManager : MonoBehaviour
 {
-    [Header("Avatar Prefabs")]
-    public GameObject avatarPrefab;
-    // TODO: Add special avatar prefabs
-    // public GameObject subscriberAvatarPrefab;
-    // public GameObject moderatorAvatarPrefab;
-    // public GameObject vipAvatarPrefab;
-    // public GameObject broadcasterAvatarPrefab;
-    // public GameObject bitsCheerAvatarPrefab;
-    public float spawnRadius = 10f;
-    public float walkSpeed = 2f;
-    public float walkRadius = 15f;
+    [Header("Bounds Settings")]
+    [SerializeField] private Collider spawnBounds;
+    [SerializeField] private Collider walkBounds;
     
-    [Header("Avatar Display")]
-    public float nameTagHeight = 2f;
+    [Header("Avatar Settings")]
+    [SerializeField] private GameObject cameraToLook;
+    [SerializeField] private float walkSpeed = 2f;
+    [SerializeField] private float nameTagHeight = 2f;
     
-    private Dictionary<string, GameObject> activeAvatars = new Dictionary<string, GameObject>();
+    [Header("Despawn Management")]
+    [SerializeField] private float despawnCheckInterval = 30f; // Check every 30 seconds
+    
+    private Dictionary<string, ChatAvatar> activeAvatars = new Dictionary<string, ChatAvatar>();
     private TwitchChatClient chatClient;
+    private AvatarPoolManager poolManager;
     
     void Start()
     {
@@ -30,7 +29,23 @@ public class ChatAvatarManager : MonoBehaviour
             return;
         }
         
+        poolManager = AvatarPoolManager.Instance;
+        if (poolManager == null)
+        {
+            Debug.LogError("AvatarPoolManager not found!");
+            return;
+        }
+        
+        // Use walkBounds as spawnBounds if not set
+        if (spawnBounds == null)
+        {
+            spawnBounds = walkBounds;
+        }
+        
         TwitchChatClient.OnMessageReceived += OnChatMessage;
+        
+        // Start despawn management coroutine
+        StartCoroutine(DespawnManagementCoroutine());
     }
     
     void OnDestroy()
@@ -45,9 +60,9 @@ public class ChatAvatarManager : MonoBehaviour
         // Check if avatar already exists
         if (activeAvatars.ContainsKey(username))
         {
-            Debug.Log($"Avatar for {username} already exists, ignoring");
-            // TODO: Could update existing avatar based on new message data
-            // Example: Change avatar appearance if user gained subscriber status
+            // Update existing avatar activity
+            activeAvatars[username].UpdateActivity(message);
+            Debug.Log($"Updated activity for existing avatar: {username}");
             return;
         }
         
@@ -60,13 +75,11 @@ public class ChatAvatarManager : MonoBehaviour
                 
             case MessageType.EmoteOnly:
                 // TODO: Spawn avatar with special emote-focused appearance
-                // Example: Larger avatar, emote particles, different color
                 SpawnAvatar(username, message);
                 break;
                 
             case MessageType.BitsCheer:
                 // TODO: Spawn avatar with bits celebration effects
-                // Example: Golden avatar, coin particles, special animation
                 SpawnAvatar(username, message);
                 Debug.Log($"{username} cheered {message.bitsAmount} bits!");
                 break;
@@ -77,7 +90,6 @@ public class ChatAvatarManager : MonoBehaviour
                 
             case MessageType.System:
                 // TODO: System messages might not need avatars
-                // Example: Display system notification UI instead
                 Debug.Log($"System message: {message.message}");
                 break;
         }
@@ -90,42 +102,31 @@ public class ChatAvatarManager : MonoBehaviour
         switch (message.noticeType)
         {
             case UserNoticeType.Sub:
-                // TODO: Spawn special subscriber celebration avatar
-                // Example: Crown effect, confetti, special subscriber prefab
                 SpawnAvatar(username, message);
                 Debug.Log($"{username} just subscribed!");
                 break;
                 
             case UserNoticeType.Resub:
-                // TODO: Spawn avatar with resub celebration
-                // Example: Larger crown, month counter, loyalty effects
                 SpawnAvatar(username, message);
                 Debug.Log($"{username} resubscribed for {message.subMonths} months!");
                 break;
                 
             case UserNoticeType.SubGift:
-                // TODO: Spawn avatar with gift celebration
-                // Example: Present box effect, gifting animation
                 SpawnAvatar(username, message);
                 Debug.Log($"{username} gifted a subscription!");
                 break;
                 
             case UserNoticeType.Raid:
-                // TODO: Spawn multiple raider avatars or special raid leader
-                // Example: Army of mini-avatars, raid banner, invasion effect
                 SpawnAvatar(username, message);
                 Debug.Log($"Raid from {message.raidFrom} with {message.raidViewers} viewers!");
                 break;
                 
             case UserNoticeType.BitsBadgeTier:
-                // TODO: Spawn avatar with new bits badge celebration
-                // Example: Badge upgrade animation, achievement popup
                 SpawnAvatar(username, message);
                 Debug.Log($"{username} earned a new bits badge!");
                 break;
                 
             case UserNoticeType.Other:
-                // TODO: Handle other notice types
                 SpawnAvatar(username, message);
                 break;
         }
@@ -133,55 +134,92 @@ public class ChatAvatarManager : MonoBehaviour
     
     void SpawnAvatar(string username, ChatMessage message)
     {
-        // Random spawn position within spawn radius
-        Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-        Vector3 spawnPosition = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
-        
-        // TODO: Select avatar prefab based on user status
-        GameObject prefabToUse = avatarPrefab;
-        
-        // Check user badges and status
-        if (message.isBroadcaster)
+        if (spawnBounds == null || walkBounds == null)
         {
-            // TODO: Use special broadcaster avatar prefab
-            // Example: Crown, special colors, larger size
-            prefabToUse = avatarPrefab; // broadcasterAvatarPrefab;
-        }
-        else if (message.isModerator)
-        {
-            // TODO: Use moderator avatar prefab
-            // Example: Sword icon, mod badge, special effects
-            prefabToUse = avatarPrefab; // moderatorAvatarPrefab;
-        }
-        else if (message.isVip)
-        {
-            // TODO: Use VIP avatar prefab
-            // Example: Diamond badge, premium effects
-            prefabToUse = avatarPrefab; // vipAvatarPrefab;
-        }
-        else if (message.isSubscriber)
-        {
-            // TODO: Use subscriber avatar prefab
-            // Example: Sub badge, different color, subscriber perks
-            prefabToUse = avatarPrefab; // subscriberAvatarPrefab;
+            Debug.LogError("Spawn bounds or walk bounds not set!");
+            return;
         }
         
-        GameObject avatar = Instantiate(prefabToUse, spawnPosition, Quaternion.identity, transform);
-        avatar.name = $"Avatar_{username}";
+        // Get avatar from pool
+        GameObject avatarObj = poolManager.GetAvatar();
+        if (avatarObj == null)
+        {
+            Debug.LogWarning("Could not get avatar from pool!");
+            return;
+        }
         
-        // Add walking behavior
-        ChatAvatar avatarScript = avatar.GetComponent<ChatAvatar>();
+        // Position avatar within spawn bounds
+        Vector3 spawnPosition = GetRandomPointInBounds(spawnBounds);
+        avatarObj.transform.position = spawnPosition;
+        avatarObj.transform.SetParent(transform);
+        avatarObj.name = $"Avatar_{username}";
+        
+        // Initialize avatar component
+        ChatAvatar avatarScript = avatarObj.GetComponent<ChatAvatar>();
         if (avatarScript == null)
         {
-            avatarScript = avatar.AddComponent<ChatAvatar>();
+            avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
         
-        avatarScript.Initialize(username, message, walkRadius, walkSpeed, nameTagHeight);
+        avatarScript.Initialize(username, message, walkBounds, walkSpeed, nameTagHeight, cameraToLook);
         
         // Store reference
-        activeAvatars[username] = avatar;
+        activeAvatars[username] = avatarScript;
         
-        Debug.Log($"Spawned avatar for {username} at {spawnPosition}");
+        Debug.Log($"Spawned avatar for {username} at {spawnPosition}. Active avatars: {activeAvatars.Count}");
+    }
+    
+    private Vector3 GetRandomPointInBounds(Collider bounds)
+    {
+        Bounds boundsBox = bounds.bounds;
+        
+        // Generate random point within bounds
+        Vector3 randomPoint = new Vector3(
+            Random.Range(boundsBox.min.x, boundsBox.max.x),
+            boundsBox.center.y,
+            Random.Range(boundsBox.min.z, boundsBox.max.z)
+        );
+        
+        // Ensure the point is actually inside the collider
+        Vector3 closestPoint = bounds.ClosestPoint(randomPoint);
+        
+        // If the closest point is significantly different, use it instead
+        if (Vector3.Distance(randomPoint, closestPoint) > 0.1f)
+        {
+            randomPoint = closestPoint;
+        }
+        
+        return randomPoint;
+    }
+    
+    private IEnumerator DespawnManagementCoroutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(despawnCheckInterval);
+            
+            // Check for avatars that should be despawned
+            List<string> avatarsToRemove = new List<string>();
+            
+            foreach (var kvp in activeAvatars)
+            {
+                if (kvp.Value == null || kvp.Value.ShouldDespawn())
+                {
+                    avatarsToRemove.Add(kvp.Key);
+                }
+            }
+            
+            // Remove avatars that should be despawned
+            foreach (string username in avatarsToRemove)
+            {
+                RemoveAvatar(username);
+            }
+            
+            if (avatarsToRemove.Count > 0)
+            {
+                Debug.Log($"Despawned {avatarsToRemove.Count} inactive avatars. Active avatars: {activeAvatars.Count}");
+            }
+        }
     }
     
     public void RemoveAvatar(string username)
@@ -189,18 +227,46 @@ public class ChatAvatarManager : MonoBehaviour
         username = username.ToLower();
         if (activeAvatars.ContainsKey(username))
         {
-            Destroy(activeAvatars[username]);
+            ChatAvatar avatar = activeAvatars[username];
+            if (avatar != null)
+            {
+                // Return to pool instead of destroying
+                poolManager.ReturnAvatar(avatar.gameObject);
+            }
+            
             activeAvatars.Remove(username);
         }
     }
     
     public void ClearAllAvatars()
     {
-        foreach (var avatar in activeAvatars.Values)
+        List<string> allUsernames = new List<string>(activeAvatars.Keys);
+        foreach (string username in allUsernames)
         {
-            if (avatar != null)
-                Destroy(avatar);
+            RemoveAvatar(username);
         }
-        activeAvatars.Clear();
+        
+        Debug.Log("Cleared all avatars");
+    }
+    
+    public int GetActiveAvatarCount()
+    {
+        return activeAvatars.Count;
+    }
+    
+    // Gizmos for visualizing bounds in scene view
+    private void OnDrawGizmosSelected()
+    {
+        if (spawnBounds != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireCube(spawnBounds.bounds.center, spawnBounds.bounds.size);
+        }
+        
+        if (walkBounds != null && walkBounds != spawnBounds)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireCube(walkBounds.bounds.center, walkBounds.bounds.size);
+        }
     }
 }
