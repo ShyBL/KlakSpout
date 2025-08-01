@@ -9,7 +9,6 @@ public class ChatAvatar : MonoBehaviour
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
     [SerializeField] private GameObject nameTagObject;
-    
     private string username;
     private ChatMessage messageData;
     private DateTime lastActivityTime;
@@ -28,7 +27,7 @@ public class ChatAvatar : MonoBehaviour
         lastActivityTime = DateTime.Now;
         this.cameraToLook = cameraToLook;
         
-        SetupNameTag(nameHeight);
+        CreateNameTag(nameHeight);
         ApplyAvatarEffects();
         SetupWalkBehavior(walkBounds, walkSpeed);
     }
@@ -59,6 +58,7 @@ public class ChatAvatar : MonoBehaviour
         // Destroy name tag if it exists
         if (nameTagObject != null)
         {
+            Destroy(nameTagObject);
             nameTagObject = null;
             nameTag = null;
         }
@@ -68,6 +68,35 @@ public class ChatAvatar : MonoBehaviour
         {
             walkBehavior.StopWalking();
         }
+        
+        // Reset scale
+        transform.localScale = Vector3.one;
+    }
+    
+    public void MoveToEmote(FallingEmote emote)
+    {
+        if (walkBehavior != null)
+        {
+            // Set destination to emote position
+            //walkBehavior.isDetectingEmote = true;
+            walkBehavior.SetNewTarget(emote.transform);
+            Debug.Log($"{username} moving to collect emote: {emote.EmoteData.emoteName}");
+        }
+    }
+    
+    public void CollectEmote(FallingEmote emote)
+    {
+        // Grow avatar slightly
+        Vector3 currentScale = transform.localScale;
+        transform.localScale = currentScale + Vector3.one * 0.05f;
+        
+        Debug.Log($"{username} collected emote: {emote.EmoteData.emoteName} - New scale: {transform.localScale.x:F2}");
+        
+        // Update activity time
+        lastActivityTime = DateTime.Now;
+        
+        // Tell emote it's been collected
+        emote.OnCollected();
     }
     
     private void SetupWalkBehavior(Collider walkBounds, float walkSpeed)
@@ -186,11 +215,12 @@ public class ChatAvatar : MonoBehaviour
         // Example: Parse custom badges, channel-specific badges, etc.
     }
     
-    void SetupNameTag(float height)
+    void CreateNameTag(float height)
     {
         // Add TextMeshPro component
         nameTag = nameTagObject.GetComponent<TextMeshPro>();
         nameTag.text = username;
+        // Color will be set in ApplyAvatarEffects() based on user status
         
         // Make name tag always face camera
         if (cameraToLook != null)

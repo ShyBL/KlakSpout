@@ -12,6 +12,7 @@ public class WalkBehavior : MonoBehaviour
     private Collider walkBounds;
     private Vector3 targetPosition;
     private bool isWalking = true;
+    public bool isDetectingEmote = false;
     private Coroutine walkCoroutine;
     
     public void Initialize(Collider bounds, float speed = 2f)
@@ -83,11 +84,12 @@ public class WalkBehavior : MonoBehaviour
         
         return randomPoint;
     }
-    
-    private void SetNewTarget()
+
+    public void SetNewTarget(Transform target = null)
     {
-        targetPosition = GetRandomPointInBounds();
+        targetPosition = target == null ? GetRandomPointInBounds() : target.transform.position;
     }
+    
     
     private IEnumerator WalkBehaviorCoroutine()
     {
