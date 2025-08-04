@@ -15,7 +15,7 @@ public class TwitchChatClient : MonoBehaviour
     private StreamWriter writer;
     private bool isConnected;
     
-    public static event Action<ChatMessage> OnMessageReceived;
+    public event Action<ChatMessage> OnMessageReceived;
     
     void Start()
     {

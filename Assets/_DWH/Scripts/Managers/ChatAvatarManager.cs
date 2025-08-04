@@ -29,7 +29,7 @@ public class ChatAvatarManager : MonoBehaviour
             return;
         }
         
-        poolManager = AvatarPoolManager.Instance;
+        poolManager = FindObjectOfType<AvatarPoolManager>();
         if (poolManager == null)
         {
             Debug.LogError("AvatarPoolManager not found!");
@@ -42,7 +42,7 @@ public class ChatAvatarManager : MonoBehaviour
             spawnBounds = walkBounds;
         }
         
-        TwitchChatClient.OnMessageReceived += OnChatMessage;
+        chatClient.OnMessageReceived += OnChatMessage;
         
         // Start despawn management coroutine
         StartCoroutine(DespawnManagementCoroutine());
@@ -50,7 +50,7 @@ public class ChatAvatarManager : MonoBehaviour
     
     void OnDestroy()
     {
-        TwitchChatClient.OnMessageReceived -= OnChatMessage;
+        chatClient.OnMessageReceived -= OnChatMessage;
     }
     
     void OnChatMessage(ChatMessage message)

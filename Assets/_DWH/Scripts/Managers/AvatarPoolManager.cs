@@ -14,31 +14,8 @@ public class AvatarPoolManager : MonoBehaviour
     private ObjectPool<GameObject> avatarPool;
     private HashSet<GameObject> activeAvatars = new HashSet<GameObject>();
     
-    private static AvatarPoolManager instance;
-    public static AvatarPoolManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = FindObjectOfType<AvatarPoolManager>();
-            }
-            return instance;
-        }
-    }
-    
     private void Awake()
     {
-        if (instance == null)
-        {
-            instance = this;
-        }
-        else if (instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        
         InitializePool();
     }
     
@@ -187,11 +164,6 @@ public class AvatarPoolManager : MonoBehaviour
     {
         // Clean up pool when manager is destroyed
         avatarPool?.Clear();
-        
-        if (instance == this)
-        {
-            instance = null;
-        }
     }
     
     // Debug info for inspector

@@ -9,11 +9,35 @@ public class WalkBehavior : MonoBehaviour
     [SerializeField] private float pauseMaxTime = 2f;
     [SerializeField] private float targetReachDistance = 0.5f;
     
+    [Header("Animation Settings")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float animationSmoothing = 0.1f;
+    
     private Collider walkBounds;
     private Vector3 targetPosition;
     private bool isWalking = true;
     public bool isDetectingEmote = false;
     private Coroutine walkCoroutine;
+    
+    // Animation components
+    private float currentSpeed = 0f;
+    private Vector3 lastPosition;
+    
+    // Animation parameter names (make sure these match your Animator Controller)
+    private const string SPEED_PARAM = "Speed";
+    private const string IS_WALKING_PARAM = "IsWalking";
+    
+    private void Awake()
+    {
+        if (animator == null)
+        {
+            Debug.LogWarning($"No Animator found on {gameObject.name}. Animation will not work.");
+        }
+        
+        lastPosition = transform.position;
+    }
+    
+
     
     public void Initialize(Collider bounds, float speed = 2f)
     {
@@ -44,6 +68,13 @@ public class WalkBehavior : MonoBehaviour
             StopCoroutine(walkCoroutine);
             walkCoroutine = null;
         }
+        
+        // Ensure animation goes to idle
+        if (animator != null)
+        {
+            animator.SetFloat(SPEED_PARAM, 0f);
+            animator.SetBool(IS_WALKING_PARAM, false);
+        }
     }
     
     public void SetWalkSpeed(float speed)
@@ -57,6 +88,7 @@ public class WalkBehavior : MonoBehaviour
         
         Vector3 randomPoint = GetRandomPointInBounds();
         transform.position = randomPoint;
+        lastPosition = transform.position;
         SetNewTarget();
     }
     
@@ -90,7 +122,6 @@ public class WalkBehavior : MonoBehaviour
         targetPosition = target == null ? GetRandomPointInBounds() : target.transform.position;
     }
     
-    
     private IEnumerator WalkBehaviorCoroutine()
     {
         while (isWalking && walkBounds != null)
@@ -113,7 +144,32 @@ public class WalkBehavior : MonoBehaviour
                     transform.rotation = Quaternion.LookRotation(direction);
                 }
                 
+                // Update animation parameters while moving
+                if (animator != null)
+                {
+                    // Calculate actual movement speed
+                    float actualSpeed = Vector3.Distance(transform.position, lastPosition) / Time.deltaTime;
+                    lastPosition = transform.position;
+                    
+                    // Smooth the speed value for better animation blending
+                    currentSpeed = Mathf.Lerp(currentSpeed, actualSpeed, animationSmoothing);
+                    
+                    // Normalize speed (0 = idle, 1 = full walk speed)
+                    float normalizedSpeed = Mathf.Clamp01(currentSpeed / walkSpeed);
+                    
+                    // Update animator parameters
+                    animator.SetFloat(SPEED_PARAM, normalizedSpeed);
+                    animator.SetBool(IS_WALKING_PARAM, true);
+                }
+                
                 yield return null;
+            }
+            
+            // Set animation to idle during pause
+            if (animator != null)
+            {
+                animator.SetFloat(SPEED_PARAM, 0f);
+                animator.SetBool(IS_WALKING_PARAM, false);
             }
             
             // Brief pause at destination

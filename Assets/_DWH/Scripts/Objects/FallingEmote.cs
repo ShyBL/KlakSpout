@@ -24,8 +24,17 @@ public class FallingEmote : MonoBehaviour
     public bool HasLanded => hasLanded;
     public bool IsBeingCollected => isBeingCollected;
     
+    private EmoteManager emoteManager;
+    
     private void Awake()
     {
+        emoteManager = FindObjectOfType<EmoteManager>();
+        if (emoteManager == null)
+        {
+            Debug.LogError("EmoteManager not found!");
+            return;
+        }
+        
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
         
@@ -188,7 +197,7 @@ public class FallingEmote : MonoBehaviour
         rb.isKinematic = true;
         
         // Notify the emote manager that we've landed
-        EmoteManager.Instance?.OnEmoteLanded(this);
+        emoteManager.OnEmoteLanded(this);
         
         Debug.Log($"Emote {emoteData.emoteName} landed at {transform.position}");
     }
@@ -207,7 +216,7 @@ public class FallingEmote : MonoBehaviour
     public void OnCollected()
     {
         // Called when avatar successfully collects this emote
-        EmoteManager.Instance?.ReturnEmoteToPool(this);
+        emoteManager.ReturnEmoteToPool(this);
     }
     
     private void OnDrawGizmosSelected()

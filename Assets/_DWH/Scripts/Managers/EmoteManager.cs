@@ -23,28 +23,14 @@ public class EmoteManager : MonoBehaviour
     private HashSet<GameObject> activeEmotes = new HashSet<GameObject>();
     private List<FallingEmote> landedEmotes = new List<FallingEmote>();
     
-    private static EmoteManager instance;
-    public static EmoteManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = FindObjectOfType<EmoteManager>();
-            }
-            return instance;
-        }
-    }
+    private TwitchChatClient chatClient;
     
     private void Awake()
     {
-        if (instance == null)
+        chatClient = FindObjectOfType<TwitchChatClient>();
+        if (chatClient == null)
         {
-            instance = this;
-        }
-        else if (instance != this)
-        {
-            Destroy(gameObject);
+            Debug.LogError("TwitchChatClient not found!");
             return;
         }
         
@@ -54,19 +40,14 @@ public class EmoteManager : MonoBehaviour
     private void Start()
     {
         // Subscribe to chat messages
-        TwitchChatClient.OnMessageReceived += OnChatMessage;
+        chatClient.OnMessageReceived += OnChatMessage;
     }
     
     private void OnDestroy()
     {
-        TwitchChatClient.OnMessageReceived -= OnChatMessage;
+        chatClient.OnMessageReceived -= OnChatMessage;
         
         emotePool?.Clear();
-        
-        if (instance == this)
-        {
-            instance = null;
-        }
     }
     
     private void InitializePool()
