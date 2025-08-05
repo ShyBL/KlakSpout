@@ -78,12 +78,28 @@ public class ChatAvatar : MonoBehaviour
         if (walkBehavior != null)
         {
             // Set destination to emote position
-            //walkBehavior.isDetectingEmote = true;
+            isDetectingEmote = true;
+            detectedEmote = emote;
             walkBehavior.SetNewTarget(emote.transform);
             Debug.Log($"{username} moving to collect emote: {emote.EmoteData.emoteName}");
         }
     }
-    
+
+    private FallingEmote detectedEmote { get; set; }
+
+    private bool isDetectingEmote { get; set; }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (isDetectingEmote && other.TryGetComponent(out FallingEmote emote))
+        {
+            if (emote == detectedEmote)
+            {
+                CollectEmote(detectedEmote);
+            }
+        }
+    }
+
     public void CollectEmote(FallingEmote emote)
     {
         // Grow avatar slightly
@@ -97,6 +113,7 @@ public class ChatAvatar : MonoBehaviour
         
         // Tell emote it's been collected
         emote.OnCollected();
+        isDetectingEmote = false;
     }
     
     private void SetupWalkBehavior(Collider walkBounds, float walkSpeed)

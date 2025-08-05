@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
+using UnityEngine.Networking;
 
 public class EmoteManager : MonoBehaviour
 {
@@ -271,6 +273,95 @@ public class EmoteManager : MonoBehaviour
     public int GetLandedEmoteCount()
     {
         return landedEmotes.Count;
+    }
+    
+    private Coroutine imageLoadCoroutine;
+    
+    public void LoadEmoteImage(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    {
+        if (imageLoadCoroutine != null)
+        {
+            StopCoroutine(imageLoadCoroutine);
+        }
+        
+        imageLoadCoroutine = StartCoroutine(LoadEmoteImageCoroutine(imageUrl, emoteName, spriteRenderer));
+    }
+    
+    public void ClearSprite(SpriteRenderer spriteRenderer)
+    {
+        if (imageLoadCoroutine != null)
+        {
+            StopCoroutine(imageLoadCoroutine);
+            imageLoadCoroutine = null;
+        }
+        
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = null;
+        }
+    }
+    
+    private IEnumerator LoadEmoteImageCoroutine(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    {
+        using (UnityWebRequest www = UnityWebRequestTexture.GetTexture(imageUrl))
+        {
+            yield return www.SendWebRequest();
+            
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Texture2D texture = DownloadHandlerTexture.GetContent(www);
+                
+                if (texture != null && spriteRenderer != null)
+                {
+                    // Create sprite from texture
+                    Sprite emoteSprite = Sprite.Create(
+                        texture,
+                        new Rect(0, 0, texture.width, texture.height),
+                        new Vector2(0.5f, 0.5f), // Pivot at center
+                        100f // Pixels per unit
+                    );
+                    
+                    spriteRenderer.sprite = emoteSprite;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"Failed to load emote image: {emoteName} - {www.error}");
+                
+                // Create a fallback colored square
+                CreateFallbackSprite(spriteRenderer);
+            }
+        }
+        
+        imageLoadCoroutine = null;
+    }
+    
+    private void CreateFallbackSprite(SpriteRenderer spriteRenderer)
+    {
+        if (spriteRenderer == null) return;
+        
+        // Create a simple colored square as fallback
+        Texture2D fallbackTexture = new Texture2D(64, 64);
+        Color fallbackColor = Random.ColorHSV(0f, 1f, 0.7f, 1f, 0.8f, 1f);
+        
+        for (int x = 0; x < 64; x++)
+        {
+            for (int y = 0; y < 64; y++)
+            {
+                fallbackTexture.SetPixel(x, y, fallbackColor);
+            }
+        }
+        
+        fallbackTexture.Apply();
+        
+        Sprite fallbackSprite = Sprite.Create(
+            fallbackTexture,
+            new Rect(0, 0, 64, 64),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        
+        spriteRenderer.sprite = fallbackSprite;
     }
     
     private void OnDrawGizmosSelected()

@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4972420470536718354}
   - component: {fileID: 7224929202715795296}
   - component: {fileID: 6251061788504359169}
+  - component: {fileID: 4713810972114128645}
   m_Layer: 3
   m_Name: Avatar
   m_TagString: Untagged
@@ -67,8 +68,28 @@ MonoBehaviour:
   pauseMaxTime: 2
   targetReachDistance: 0.5
   animator: {fileID: 5206952864484218324}
-  animationSmoothing: 0.1
-  isDetectingEmote: 0
+  animationTransitionSpeed: 5
+--- !u!65 &4713810972114128645
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 227822876331511458}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.5, y: 0.5, z: 1.5}
+  m_Center: {x: 0, y: 0.2, z: 0}
 --- !u!1 &1229387402546732676
 GameObject:
   m_ObjectHideFlags: 0

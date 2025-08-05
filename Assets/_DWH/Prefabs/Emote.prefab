@@ -80,7 +80,7 @@ SpriteRenderer:
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
-  m_DrawMode: 2
+  m_DrawMode: 1
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
@@ -147,10 +147,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 381dd2f1dcb8432c9ed507d38a76a89d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spriteRenderer: {fileID: 3223268131020490433}
-  fallSpeed: 5
-  rotationSpeed: 90
-  groundCheckDistance: 0.1
-  groundLayerMask:
-    serializedVersion: 2
-    m_Bits: 128

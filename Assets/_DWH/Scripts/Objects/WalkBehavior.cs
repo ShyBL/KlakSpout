@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class WalkBehavior : MonoBehaviour
 {
@@ -11,33 +10,29 @@ public class WalkBehavior : MonoBehaviour
     
     [Header("Animation Settings")]
     [SerializeField] private Animator animator;
-    [SerializeField] private float animationSmoothing = 0.1f;
+    [SerializeField] private float animationTransitionSpeed = 5f;
     
     private Collider walkBounds;
     private Vector3 targetPosition;
-    private bool isWalking = true;
-    public bool isDetectingEmote = false;
-    private Coroutine walkCoroutine;
+    private bool isWalkingEnabled = true;
+    private bool isCurrentlyMoving = false;
+    private float pauseTimer = 0f;
+    private bool isPaused = false;
     
-    // Animation components
-    private float currentSpeed = 0f;
-    private Vector3 lastPosition;
-    
-    // Animation parameter names (make sure these match your Animator Controller)
-    private const string SPEED_PARAM = "Speed";
-    private const string IS_WALKING_PARAM = "IsWalking";
+    // Animation parameter names
+    private const string IS_WALKING_PARAM = "isWalking";
     
     private void Awake()
     {
         if (animator == null)
         {
-            Debug.LogWarning($"No Animator found on {gameObject.name}. Animation will not work.");
+            animator = GetComponent<Animator>();
+            if (animator == null)
+            {
+                Debug.LogWarning($"No Animator found on {gameObject.name}. Animation will not work.");
+            }
         }
-        
-        lastPosition = transform.position;
     }
-    
-
     
     public void Initialize(Collider bounds, float speed = 2f)
     {
@@ -51,35 +46,97 @@ public class WalkBehavior : MonoBehaviour
         StartWalking();
     }
     
+    private void Update()
+    {
+        if (!isWalkingEnabled || walkBounds == null) return;
+        
+        // Handle pause state
+        if (isPaused)
+        {
+            pauseTimer -= Time.deltaTime;
+            if (pauseTimer <= 0f)
+            {
+                isPaused = false;
+                SetNewTarget();
+            }
+            return;
+        }
+        
+        // Calculate distance to target
+        float distanceToTarget = Vector3.Distance(transform.position, targetPosition);
+        
+        // Check if we should be moving
+        if (distanceToTarget > targetReachDistance)
+        {
+            // We should be moving
+            if (!isCurrentlyMoving)
+            {
+                isCurrentlyMoving = true;
+                UpdateAnimation(true);
+            }
+            
+            // Move towards target
+            Vector3 direction = (targetPosition - transform.position).normalized;
+            Vector3 newPosition = transform.position + direction * (walkSpeed * Time.deltaTime);
+            
+            // Ensure we stay within bounds
+            Vector3 clampedPosition = walkBounds.ClosestPoint(newPosition);
+            transform.position = clampedPosition;
+            
+            // Rotate to face movement direction
+            if (direction != Vector3.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, animationTransitionSpeed * Time.deltaTime);
+            }
+        }
+        else
+        {
+            // We've reached the target
+            if (isCurrentlyMoving)
+            {
+                isCurrentlyMoving = false;
+                UpdateAnimation(false);
+                
+                // Start pause
+                isPaused = true;
+                pauseTimer = Random.Range(pauseMinTime, pauseMaxTime);
+            }
+        }
+    }
+    
     public void StartWalking()
     {
-        if (walkCoroutine == null && walkBounds != null)
+        isWalkingEnabled = true;
+        if (walkBounds != null)
         {
-            isWalking = true;
-            walkCoroutine = StartCoroutine(WalkBehaviorCoroutine());
+            SetNewTarget();
         }
     }
     
     public void StopWalking()
     {
-        isWalking = false;
-        if (walkCoroutine != null)
-        {
-            StopCoroutine(walkCoroutine);
-            walkCoroutine = null;
-        }
+        isWalkingEnabled = false;
+        isCurrentlyMoving = false;
+        isPaused = false;
         
-        // Ensure animation goes to idle
-        if (animator != null)
-        {
-            animator.SetFloat(SPEED_PARAM, 0f);
-            animator.SetBool(IS_WALKING_PARAM, false);
-        }
+        // Set animation to idle
+        UpdateAnimation(false);
     }
     
     public void SetWalkSpeed(float speed)
     {
         walkSpeed = speed;
+    }
+    
+    
+    
+    private void UpdateAnimation(bool walking)
+    {
+        if (animator != null)
+        {
+            animator.SetBool(IS_WALKING_PARAM, walking);
+        }
     }
     
     private void SetRandomPositionInBounds()
@@ -88,7 +145,6 @@ public class WalkBehavior : MonoBehaviour
         
         Vector3 randomPoint = GetRandomPointInBounds();
         transform.position = randomPoint;
-        lastPosition = transform.position;
         SetNewTarget();
     }
     
@@ -122,70 +178,6 @@ public class WalkBehavior : MonoBehaviour
         targetPosition = target == null ? GetRandomPointInBounds() : target.transform.position;
     }
     
-    private IEnumerator WalkBehaviorCoroutine()
-    {
-        while (isWalking && walkBounds != null)
-        {
-            // Move towards target
-            while (Vector3.Distance(transform.position, targetPosition) > targetReachDistance)
-            {
-                if (!isWalking) yield break;
-                
-                Vector3 direction = (targetPosition - transform.position).normalized;
-                Vector3 newPosition = transform.position + direction * walkSpeed * Time.deltaTime;
-                
-                // Ensure we stay within bounds
-                Vector3 clampedPosition = walkBounds.ClosestPoint(newPosition);
-                transform.position = clampedPosition;
-                
-                // Rotate to face movement direction
-                if (direction != Vector3.zero)
-                {
-                    transform.rotation = Quaternion.LookRotation(direction);
-                }
-                
-                // Update animation parameters while moving
-                if (animator != null)
-                {
-                    // Calculate actual movement speed
-                    float actualSpeed = Vector3.Distance(transform.position, lastPosition) / Time.deltaTime;
-                    lastPosition = transform.position;
-                    
-                    // Smooth the speed value for better animation blending
-                    currentSpeed = Mathf.Lerp(currentSpeed, actualSpeed, animationSmoothing);
-                    
-                    // Normalize speed (0 = idle, 1 = full walk speed)
-                    float normalizedSpeed = Mathf.Clamp01(currentSpeed / walkSpeed);
-                    
-                    // Update animator parameters
-                    animator.SetFloat(SPEED_PARAM, normalizedSpeed);
-                    animator.SetBool(IS_WALKING_PARAM, true);
-                }
-                
-                yield return null;
-            }
-            
-            // Set animation to idle during pause
-            if (animator != null)
-            {
-                animator.SetFloat(SPEED_PARAM, 0f);
-                animator.SetBool(IS_WALKING_PARAM, false);
-            }
-            
-            // Brief pause at destination
-            float pauseTime = Random.Range(pauseMinTime, pauseMaxTime);
-            yield return new WaitForSeconds(pauseTime);
-            
-            // Set new target
-            SetNewTarget();
-        }
-    }
-    
-    private void OnDestroy()
-    {
-        StopWalking();
-    }
-    
     private void OnDrawGizmosSelected()
     {
         if (walkBounds != null)
@@ -197,5 +189,9 @@ public class WalkBehavior : MonoBehaviour
         // Draw target position
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(targetPosition, 0.5f);
+        
+        // Draw current state
+        Gizmos.color = isCurrentlyMoving ? Color.green : Color.blue;
+        Gizmos.DrawWireSphere(transform.position, 0.3f);
     }
 }
