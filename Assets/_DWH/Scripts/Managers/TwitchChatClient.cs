@@ -8,18 +8,43 @@ using UnityEngine;
 public class TwitchChatClient : MonoBehaviour
 {
     [Header("Configuration")]
-    [SerializeField] private string channel = "your_channel";
+    [SerializeField] private string channel = "dogxwillxhuntx";
     
+    [Header("Reconnection")]
+    [SerializeField] private float reconnectDelay = 5.0f; // Delay in seconds before a reconnect attempt
+
     private TcpClient tcpClient;
     private StreamReader reader;
     private StreamWriter writer;
     private bool isConnected;
+    private float reconnectTimer;
     
     public event Action<ChatMessage> OnMessageReceived;
     
     void Start()
     {
-        ConnectToTwitch();
+        // Initialize timer to trigger an immediate connection attempt via Update()
+        reconnectTimer = 0f;
+        isConnected = false;
+    }
+
+    void Update()
+    {
+        // If we are connected, do nothing.
+        if (isConnected)
+        {
+            return;
+        }
+
+        // Countdown the timer
+        reconnectTimer -= Time.deltaTime;
+
+        // When timer reaches zero, attempt to connect
+        if (reconnectTimer <= 0f)
+        {
+            Debug.Log("Attempting to connect to Twitch...");
+            ConnectToTwitch();
+        }
     }
     
     void OnDestroy()
@@ -29,6 +54,9 @@ public class TwitchChatClient : MonoBehaviour
     
     void ConnectToTwitch()
     {
+        // Set the timer to the specified delay to prevent immediate retries by Update()
+        reconnectTimer = reconnectDelay;
+
         try
         {
             // Connect to Twitch IRC server
@@ -50,6 +78,7 @@ public class TwitchChatClient : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Failed to connect to Twitch: {e.Message}");
+            // Disconnect will set isConnected = false, the timer is already set for the next retry
             Disconnect();
         }
     }
@@ -72,12 +101,14 @@ public class TwitchChatClient : MonoBehaviour
             catch (Exception e)
             {
                 Debug.LogError($"Error reading from Twitch: {e.Message}");
+                // Break the loop on error, which will trigger Disconnect()
                 break;
             }
             
             yield return null;
         }
         
+        // If the loop exits for any reason (e.g., connection lost), disconnect.
         Disconnect();
     }
     
@@ -402,6 +433,13 @@ public class TwitchChatClient : MonoBehaviour
     
     void Disconnect()
     {
+        // If we were already disconnected, do nothing.
+        if (!isConnected && tcpClient == null)
+        {
+            return;
+        }
+
+        // Set the state to disconnected
         isConnected = false;
         
         try
@@ -419,6 +457,6 @@ public class TwitchChatClient : MonoBehaviour
         reader = null;
         tcpClient = null;
         
-        Debug.Log("Disconnected from Twitch IRC");
+        Debug.Log("Disconnected from Twitch IRC. Update loop will attempt to reconnect.");
     }
 }
