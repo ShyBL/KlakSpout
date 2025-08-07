@@ -6,6 +6,10 @@ using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
 {
+    [Header("Visuals")]
+    [SerializeField] private Renderer avatarRenderer;
+    [SerializeField] private BlendShapeController avatarBlendShape;
+        
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
     [SerializeField] private GameObject nameTagObject;
@@ -27,11 +31,31 @@ public class ChatAvatar : MonoBehaviour
         lastActivityTime = DateTime.Now;
         this.cameraToLook = cameraToLook;
         
+        ApplyUniqueColor();
+        
         CreateNameTag(nameHeight);
         ApplyAvatarEffects();
         SetupWalkBehavior(walkBounds, walkSpeed);
     }
-    
+
+    private void ApplyUniqueColor()
+    {
+        if (avatarRenderer == null)
+        {
+            Debug.LogWarning("Avatar Renderer is not assigned!", this);
+            return;
+        }
+        
+        MaterialPropertyBlock propBlock = new MaterialPropertyBlock();
+        avatarRenderer.GetPropertyBlock(propBlock);
+        
+        Random.InitState(username.GetHashCode());
+        Color randomColor = Random.ColorHSV(0f, 1f, 0.15f, 0.30f, 0.9f, 1f);
+        
+        propBlock.SetColor("_BaseColor", randomColor);
+        avatarRenderer.SetPropertyBlock(propBlock);
+    }
+
     public void UpdateActivity(ChatMessage newMessage)
     {
         messageData = newMessage;
@@ -95,6 +119,10 @@ public class ChatAvatar : MonoBehaviour
         {
             if (emote == detectedEmote)
             {
+                walkBehavior.StopWalking();
+                
+                avatarBlendShape.OpenMouth();
+                
                 CollectEmote(detectedEmote);
             }
         }
@@ -112,6 +140,8 @@ public class ChatAvatar : MonoBehaviour
         lastActivityTime = DateTime.Now;
         
         // Tell emote it's been collected
+        avatarBlendShape.CloseMouth();
+        walkBehavior.StartWalking();
         emote.OnCollected();
         isDetectingEmote = false;
     }
