@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.Networking;
@@ -136,8 +137,12 @@ public class EmoteManager : MonoBehaviour
     private void SpawnEmotesFromMessage(ChatMessage message)
     {
         EmoteData[] emoteDataArray = EmoteData.FromEmoteInfoArray(message.emotes);
+        var uniqueEmotes = EmoteData.FromEmoteInfoArray(message.emotes)
+            .Where(e => !string.IsNullOrEmpty(e.emoteId))
+            .GroupBy(e => e.emoteId)
+            .Select(g => g.First());
         
-        foreach (EmoteData emoteData in emoteDataArray)
+        foreach (EmoteData emoteData in uniqueEmotes)
         {
             SpawnEmote(emoteData);
         }

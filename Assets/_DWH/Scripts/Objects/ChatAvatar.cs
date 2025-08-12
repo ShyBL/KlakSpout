@@ -8,7 +8,9 @@ public class ChatAvatar : MonoBehaviour
 {
     [Header("Visuals")]
     [SerializeField] private Renderer avatarRenderer;
+    [SerializeField] private Transform avatarTransform;
     [SerializeField] private BlendShapeController avatarBlendShape;
+    [SerializeField] private float growFactor = 0.5f;
         
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
@@ -16,10 +18,14 @@ public class ChatAvatar : MonoBehaviour
     private string username;
     private ChatMessage messageData;
     private DateTime lastActivityTime;
+    private FallingEmote detectedEmote;
+
+    [SerializeField] private bool isDetectingEmote;
     
     private TMP_Text nameTag;
     private GameObject cameraToLook;
     private WalkBehavior walkBehavior;
+    
     
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
@@ -109,10 +115,6 @@ public class ChatAvatar : MonoBehaviour
         }
     }
 
-    private FallingEmote detectedEmote { get; set; }
-
-    private bool isDetectingEmote { get; set; }
-
     private void OnTriggerEnter(Collider other)
     {
         if (isDetectingEmote && other.TryGetComponent(out FallingEmote emote))
@@ -131,10 +133,10 @@ public class ChatAvatar : MonoBehaviour
     public void CollectEmote(FallingEmote emote)
     {
         // Grow avatar slightly
-        Vector3 currentScale = transform.localScale;
-        transform.localScale = currentScale + Vector3.one * 0.05f;
-        
-        Debug.Log($"{username} collected emote: {emote.EmoteData.emoteName} - New scale: {transform.localScale.x:F2}");
+        Vector3 currentScale = avatarTransform.localScale;
+        avatarTransform.localScale = currentScale + Vector3.one * growFactor;
+
+        Debug.Log($"{username} collected emote: {emote.EmoteData.emoteName} - New scale: { avatarTransform.localScale.x:F2}");
         
         // Update activity time
         lastActivityTime = DateTime.Now;
