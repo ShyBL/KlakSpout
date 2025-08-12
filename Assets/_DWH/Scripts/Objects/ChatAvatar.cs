@@ -41,6 +41,7 @@ public class ChatAvatar : MonoBehaviour
         
         CreateNameTag(nameHeight);
         ApplyAvatarEffects();
+        
         SetupWalkBehavior(walkBounds, walkSpeed);
     }
 

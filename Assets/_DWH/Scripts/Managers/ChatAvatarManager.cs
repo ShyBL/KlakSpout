@@ -4,6 +4,12 @@ using UnityEngine;
 
 public class ChatAvatarManager : MonoBehaviour
 {
+    [Header("Avatar Prefabs")]
+    [SerializeField] private GameObject namazuPrefab;
+    [SerializeField] private GameObject fatNamazuPrefab;
+    [SerializeField] private GameObject dokujinPrefab;
+    [SerializeField] private GameObject broadcasterPrefab; 
+    
     [Header("Bounds Settings")]
     [SerializeField] private Collider spawnBounds;
     [SerializeField] private Collider walkBounds;
@@ -139,34 +145,80 @@ public class ChatAvatarManager : MonoBehaviour
             Debug.LogError("Spawn bounds or walk bounds not set!");
             return;
         }
-        
-        // Get avatar from pool
-        GameObject avatarObj = poolManager.GetAvatar();
-        if (avatarObj == null)
+    
+        // Get the appropriate prefab for this user
+        GameObject prefabToUse = GetAvatarPrefab(message);
+        if (prefabToUse == null)
         {
-            Debug.LogWarning("Could not get avatar from pool!");
+            Debug.LogWarning($"No prefab available for user {username}");
             return;
         }
-        
+    
+        // Get avatar from pool using the selected prefab
+        GameObject avatarObj = poolManager.GetAvatar(prefabToUse);
+        if (avatarObj == null)
+        {
+            Debug.LogWarning($"Could not get avatar from pool for prefab: {prefabToUse.name}");
+            return;
+        }
+    
         // Position avatar within spawn bounds
         Vector3 spawnPosition = GetRandomPointInBounds(spawnBounds);
         avatarObj.transform.position = spawnPosition;
         avatarObj.transform.SetParent(transform);
-        avatarObj.name = $"Avatar_{username}";
-        
+        avatarObj.name = $"Avatar_{username}_{prefabToUse.name}";
+    
         // Initialize avatar component
         ChatAvatar avatarScript = avatarObj.GetComponent<ChatAvatar>();
         if (avatarScript == null)
         {
             avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
-        
+    
         avatarScript.Initialize(username, message, walkBounds, walkSpeed, nameTagHeight, cameraToLook);
-        
+    
         // Store reference
         activeAvatars[username] = avatarScript;
+    
+        Debug.Log($"Spawned {prefabToUse.name} avatar for {username} at {spawnPosition}. Active avatars: {activeAvatars.Count}");
+    }
+    
+    private GameObject GetAvatarPrefab(ChatMessage message)
+    {
+        string username = message.username.ToLower();
+    
+        // Special case for broadcaster
+        if (username == chatClient.channel)
+        {
+            return broadcasterPrefab != null ? broadcasterPrefab : namazuPrefab;
+        }
         
-        Debug.Log($"Spawned avatar for {username} at {spawnPosition}. Active avatars: {activeAvatars.Count}");
+        if (username == "darthblechman")
+        {
+            return namazuPrefab != null ? namazuPrefab : fatNamazuPrefab;
+        }
+    
+        // Use username hash as seed for consistent results per user
+        Random.State originalState = Random.state;
+        Random.InitState(username.GetHashCode());
+    
+        GameObject selectedPrefab;
+    
+        // 40% chance for namazu family, 60% chance for dokujin
+        if (Random.Range(0f, 1f) < 0.4f)
+        {
+            // User gets a namazu - now decide which type
+            // 30% fat namazu, 70% normal namazu
+            selectedPrefab = Random.Range(0f, 1f) < 0.3f ? fatNamazuPrefab : namazuPrefab;
+        }
+        else
+        {
+            // User gets dokujin
+            selectedPrefab = dokujinPrefab;
+        }
+    
+        Random.state = originalState;
+        return selectedPrefab;
     }
     
     private Vector3 GetRandomPointInBounds(Collider bounds)

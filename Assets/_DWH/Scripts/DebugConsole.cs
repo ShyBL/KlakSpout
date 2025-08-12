@@ -19,7 +19,7 @@ public class DebugConsole : MonoBehaviour
 
     private void Update()
     {
-        if (Debug.isDebugBuild && Input.GetKeyDown(KeyCode.F1))
+        if (Debug.isDebugBuild && Input.GetKeyDown(KeyCode.Alpha0))
         {
             showConsole = !showConsole;
         }

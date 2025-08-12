@@ -12,6 +12,9 @@ public class EmoteManager : MonoBehaviour
     [SerializeField] private Collider spawnBounds;
     [SerializeField] private Transform emoteParent;
     
+    [Header("Fallback Emotes")]
+    [SerializeField] private Sprite[] fallbackEmoteSprites;
+    
     [Header("Pool Settings")]
     [SerializeField] private int defaultCapacity = 20;
     [SerializeField] private int maxSize = 100;
@@ -333,19 +336,38 @@ public class EmoteManager : MonoBehaviour
             {
                 Debug.LogWarning($"Failed to load emote image: {emoteName} - {www.error}");
                 
-                // Create a fallback colored square
-                CreateFallbackSprite(spriteRenderer);
+                // Use fallback sprite instead of creating a colored square
+                SetFallbackSprite(spriteRenderer);
             }
         }
         
         imageLoadCoroutine = null;
     }
     
+    private void SetFallbackSprite(SpriteRenderer spriteRenderer)
+    {
+        if (spriteRenderer == null) return;
+        
+        // Use random sprite from fallback list if available
+        if (fallbackEmoteSprites != null && fallbackEmoteSprites.Length > 0)
+        {
+            int randomIndex = Random.Range(0, fallbackEmoteSprites.Length);
+            spriteRenderer.sprite = fallbackEmoteSprites[randomIndex];
+            Debug.Log($"Using fallback emote sprite: {fallbackEmoteSprites[randomIndex].name}");
+        }
+        else
+        {
+            Debug.LogWarning("No fallback emote sprites assigned! Please assign fallback sprites in the inspector.");
+            // Keep the old fallback as a last resort
+            CreateFallbackSprite(spriteRenderer);
+        }
+    }
+    
     private void CreateFallbackSprite(SpriteRenderer spriteRenderer)
     {
         if (spriteRenderer == null) return;
         
-        // Create a simple colored square as fallback
+        // Create a simple colored square as last resort fallback
         Texture2D fallbackTexture = new Texture2D(64, 64);
         Color fallbackColor = Random.ColorHSV(0f, 1f, 0.7f, 1f, 0.8f, 1f);
         

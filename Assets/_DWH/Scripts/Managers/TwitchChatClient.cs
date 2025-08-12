@@ -8,7 +8,7 @@ using UnityEngine;
 public class TwitchChatClient : MonoBehaviour
 {
     [Header("Configuration")]
-    [SerializeField] private string channel = "dogxwillxhuntx";
+    [SerializeField] public string channel = "dogxwillxhuntx";
     
     [Header("Reconnection")]
     [SerializeField] private float reconnectDelay = 5.0f; // Delay in seconds before a reconnect attempt
