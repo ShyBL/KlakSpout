@@ -13,14 +13,18 @@ public class WalkBehavior : MonoBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private float animationTransitionSpeed = 5f;
 
-
+    // --- System State ---
     private Collider walkBounds;
     private Vector3 currentTargetPosition;
     private bool isWalkingEnabled = true;
     private bool isCurrentlyMoving = false;
     private float pauseTimer = 0f;
     private bool isPaused = false;
-    private Queue<Vector3> targetQueue = new ();
+
+    // --- Queue System ---
+    private Queue<Vector3> targetQueue = new Queue<Vector3>();
+
+    // --- Animation ---
     private const string IS_WALKING_PARAM = "isWalking";
 
     private void Awake()
@@ -30,7 +34,10 @@ public class WalkBehavior : MonoBehaviour
             animator = GetComponent<Animator>();
         }
     }
-    
+
+    /// <summary>
+    /// Sets the bounds for walking and enqueues the first random target.
+    /// </summary>
     public void Initialize(Collider bounds)
     {
         walkBounds = bounds;
@@ -83,7 +90,8 @@ public class WalkBehavior : MonoBehaviour
             pauseTimer = Random.Range(pauseMinTime, pauseMaxTime);
         }
     }
-    
+
+    // --- Public Control Methods ---
 
     /// <summary>
     /// PUBLIC: Adds a specific destination to the end of the queue.
@@ -104,6 +112,9 @@ public class WalkBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Completely stops walking and clears all pending targets
+    /// </summary>
     public void StopWalking()
     {
         isWalkingEnabled = false;
@@ -112,13 +123,50 @@ public class WalkBehavior : MonoBehaviour
         targetQueue.Clear(); // Empty the queue of any pending tasks
         UpdateAnimation(false);
     }
+
+    /// <summary>
+    /// Temporarily pauses walking without clearing the queue (used for eating, etc.)
+    /// </summary>
+    /// <param name="duration">How long to pause in seconds</param>
+    public void PauseForDuration(float duration)
+    {
+        isCurrentlyMoving = false;
+        UpdateAnimation(false);
+        isPaused = true;
+        pauseTimer = duration;
+        // Note: We don't disable isWalkingEnabled or clear the queue
+    }
+
+    /// <summary>
+    /// Pauses walking while preserving the queue (can be resumed)
+    /// </summary>
+    public void PauseWalking()
+    {
+        isWalkingEnabled = false;
+        isCurrentlyMoving = false;
+        isPaused = false;
+        // Note: We don't clear the queue here
+        UpdateAnimation(false);
+    }
+
+    /// <summary>
+    /// Resumes walking from where it left off
+    /// </summary>
+    public void ResumeWalking()
+    {
+        isWalkingEnabled = true;
+        if (!isPaused)
+        {
+            PrepareAndSetNextTarget();
+        }
+    }
     
     public void SetWalkSpeed(float speed)
     {
         walkSpeed = speed;
     }
 
-
+    // --- Core Queue Logic ---
 
     /// <summary>
     /// Prepares the system for the next target by managing the queue.
@@ -152,6 +200,7 @@ public class WalkBehavior : MonoBehaviour
         }
     }
     
+    // --- Your Original Helper and Debug Methods (Unchanged) ---
     
     private void UpdateAnimation(bool walking)
     {

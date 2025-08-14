@@ -2,6 +2,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
+using System.Collections;
 using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
@@ -122,10 +123,6 @@ public class ChatAvatar : MonoBehaviour
         {
             if (emote == detectedEmote)
             {
-                walkBehavior.StopWalking();
-                
-                avatarBlendShape.OpenMouth();
-                
                 CollectEmote(detectedEmote);
             }
         }
@@ -133,20 +130,34 @@ public class ChatAvatar : MonoBehaviour
 
     public void CollectEmote(FallingEmote emote)
     {
-        // Grow avatar slightly
+        // Start eating sequence
+        StartCoroutine(EatingSequence(emote));
+    }
+
+    private IEnumerator EatingSequence(FallingEmote emote)
+    {
+        int chewCount = Random.Range(2, 5); // Random number of chews
+        float chewSpeed = 0.25f;
+        
+        // Get eating duration and pause walking for that long
+        float eatingDuration = avatarBlendShape.GetEatingDuration(chewCount, chewSpeed);
+        walkBehavior.PauseForDuration(eatingDuration);
+        
+        // Start eating animation
+        yield return StartCoroutine(avatarBlendShape.EatAnimation(chewCount, chewSpeed));
+        
+        // Grow avatar slightly after eating
         Vector3 currentScale = avatarTransform.localScale;
         avatarTransform.localScale = currentScale + Vector3.one * growFactor;
 
-        Debug.Log($"{username} collected emote: {emote.EmoteData.emoteName} - New scale: { avatarTransform.localScale.x:F2}");
+        Debug.Log($"{username} ate emote: {emote.EmoteData.emoteName} with {chewCount} chews - New scale: {avatarTransform.localScale.x:F2}");
         
-        // Update activity time
+        // Update activity time and cleanup
         lastActivityTime = DateTime.Now;
-        
-        // Tell emote it's been collected
-        avatarBlendShape.CloseMouth();
-        walkBehavior.StartWalking();
         emote.OnCollected();
         isDetectingEmote = false;
+        
+        // Walking will automatically resume after the pause duration
     }
     
     private void SetupWalkBehavior(Collider walkBounds)
