@@ -30,7 +30,7 @@ public class ChatAvatar : MonoBehaviour
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
     
-    public void Initialize(string user, ChatMessage message, Collider walkBounds, float walkSpeed, float nameHeight, GameObject cameraToLook)
+    public void Initialize(string user, ChatMessage message, Collider walkBounds, GameObject cameraToLook)
     {
         username = user;
         messageData = message;
@@ -39,10 +39,10 @@ public class ChatAvatar : MonoBehaviour
         
         ApplyUniqueColor();
         
-        CreateNameTag(nameHeight);
+        CreateNameTag();
         ApplyAvatarEffects();
         
-        SetupWalkBehavior(walkBounds, walkSpeed);
+        SetupWalkBehavior(walkBounds);
     }
 
     private void ApplyUniqueColor()
@@ -149,7 +149,7 @@ public class ChatAvatar : MonoBehaviour
         isDetectingEmote = false;
     }
     
-    private void SetupWalkBehavior(Collider walkBounds, float walkSpeed)
+    private void SetupWalkBehavior(Collider walkBounds)
     {
         walkBehavior = GetComponent<WalkBehavior>();
         if (walkBehavior == null)
@@ -157,7 +157,7 @@ public class ChatAvatar : MonoBehaviour
             walkBehavior = gameObject.AddComponent<WalkBehavior>();
         }
         
-        walkBehavior.Initialize(walkBounds, walkSpeed);
+        walkBehavior.Initialize(walkBounds);
     }
     
     void ApplyAvatarEffects()
@@ -265,7 +265,7 @@ public class ChatAvatar : MonoBehaviour
         // Example: Parse custom badges, channel-specific badges, etc.
     }
     
-    void CreateNameTag(float height)
+    void CreateNameTag()
     {
         // Add TextMeshPro component
         nameTag = nameTagObject.GetComponent<TextMeshPro>();

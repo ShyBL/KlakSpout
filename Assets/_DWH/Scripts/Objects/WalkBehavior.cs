@@ -34,10 +34,9 @@ public class WalkBehavior : MonoBehaviour
         }
     }
     
-    public void Initialize(Collider bounds, float speed = 2f)
+    public void Initialize(Collider bounds)
     {
         walkBounds = bounds;
-        walkSpeed = speed;
         
         // Set initial position within bounds
         SetRandomPositionInBounds();

@@ -2,13 +2,30 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
+public class AvatarFamily
+{
+    public string familyName;
+    [Range(0f, 100f)]
+    public float spawnChance;
+    public List<AvatarVariant> variants = new List<AvatarVariant>();
+}
+
+[System.Serializable]
+public class AvatarVariant
+{
+    public string variantName;
+    public GameObject prefab;
+    [Range(0f, 100f)]
+    public float variantChance;
+}
+
 public class ChatAvatarManager : MonoBehaviour
 {
     [Header("Avatar Prefabs")]
-    [SerializeField] private GameObject namazuPrefab;
-    [SerializeField] private GameObject fatNamazuPrefab;
-    [SerializeField] private GameObject dokujinPrefab;
+//    [SerializeField] private List<GameObject> avatarPrefabs = new List<GameObject>();
     [SerializeField] private GameObject broadcasterPrefab; 
+    [SerializeField] private List<AvatarFamily> avatarFamilies = new List<AvatarFamily>();
     
     [Header("Bounds Settings")]
     [SerializeField] private Collider spawnBounds;
@@ -16,8 +33,6 @@ public class ChatAvatarManager : MonoBehaviour
     
     [Header("Avatar Settings")]
     [SerializeField] private GameObject cameraToLook;
-    [SerializeField] private float walkSpeed = 2f;
-    [SerializeField] private float nameTagHeight = 2f;
     
     [Header("Despawn Management")]
     [SerializeField] private float despawnCheckInterval = 30f; // Check every 30 seconds
@@ -175,7 +190,7 @@ public class ChatAvatarManager : MonoBehaviour
             avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
     
-        avatarScript.Initialize(username, message, walkBounds, walkSpeed, nameTagHeight, cameraToLook);
+        avatarScript.Initialize(username, message, walkBounds, cameraToLook);
     
         // Store reference
         activeAvatars[username] = avatarScript;
@@ -190,36 +205,146 @@ public class ChatAvatarManager : MonoBehaviour
         // Special case for broadcaster
         if (username == chatClient.channel)
         {
-            return broadcasterPrefab != null ? broadcasterPrefab : namazuPrefab;
+            return broadcasterPrefab;
         }
+    
+        // Check if we have any families available
+        if (avatarFamilies.Count == 0)
+        {
+            Debug.LogWarning("No avatar families assigned!");
+            return broadcasterPrefab; // Fallback
+        }
+    
+        // Select family based on weighted random
+        AvatarFamily selectedFamily = SelectWeightedFamily();
+        if (selectedFamily == null || selectedFamily.variants.Count == 0)
+        {
+            Debug.LogWarning("Selected family has no variants!");
+            return broadcasterPrefab; // Fallback
+        }
+    
+        // Select variant within the family
+        AvatarVariant selectedVariant = SelectWeightedVariant(selectedFamily);
         
-        if (username == "darthblechman")
-        {
-            return namazuPrefab != null ? namazuPrefab : fatNamazuPrefab;
-        }
-    
-        // Use username hash as seed for consistent results per user
-        Random.State originalState = Random.state;
-        Random.InitState(username.GetHashCode());
-    
-        GameObject selectedPrefab;
-    
-        // 40% chance for namazu family, 60% chance for dokujin
-        if (Random.Range(0f, 1f) < 0.4f)
-        {
-            // User gets a namazu - now decide which type
-            // 30% fat namazu, 70% normal namazu
-            selectedPrefab = Random.Range(0f, 1f) < 0.3f ? fatNamazuPrefab : namazuPrefab;
-        }
-        else
-        {
-            // User gets dokujin
-            selectedPrefab = dokujinPrefab;
-        }
-    
-        Random.state = originalState;
-        return selectedPrefab;
+        return selectedVariant?.prefab ?? broadcasterPrefab; // Fallback if null
     }
+    
+    private AvatarFamily SelectWeightedFamily()
+    {
+        float totalWeight = 0f;
+        foreach (var family in avatarFamilies)
+        {
+            totalWeight += family.spawnChance;
+        }
+    
+        if (totalWeight <= 0f) return null;
+    
+        float randomValue = Random.Range(0f, totalWeight);
+        float currentWeight = 0f;
+    
+        foreach (var family in avatarFamilies)
+        {
+            currentWeight += family.spawnChance;
+            if (randomValue <= currentWeight)
+            {
+                return family;
+            }
+        }
+    
+        return avatarFamilies[avatarFamilies.Count - 1]; // Fallback to last family
+    }
+    
+    private AvatarVariant SelectWeightedVariant(AvatarFamily family)
+    {
+        float totalWeight = 0f;
+        foreach (var variant in family.variants)
+        {
+            totalWeight += variant.variantChance;
+        }
+    
+        if (totalWeight <= 0f) return family.variants[0]; // Return first variant as fallback
+    
+        float randomValue = Random.Range(0f, totalWeight);
+        float currentWeight = 0f;
+    
+        foreach (var variant in family.variants)
+        {
+            currentWeight += variant.variantChance;
+            if (randomValue <= currentWeight)
+            {
+                return variant;
+            }
+        }
+    
+        return family.variants[family.variants.Count - 1]; // Fallback to last variant
+    }
+    
+    // private GameObject GetAvatarPrefab(ChatMessage message)
+    // {
+    //     string username = message.username.ToLower();
+    //
+    //     // Special case for broadcaster
+    //     if (username == chatClient.channel)
+    //     {
+    //         return broadcasterPrefab != null ? broadcasterPrefab : 
+    //             (avatarPrefabs.Count > 0 ? avatarPrefabs[0] : null);
+    //     }
+    //
+    //     // Check if we have any prefabs available
+    //     if (avatarPrefabs.Count == 0)
+    //     {
+    //         Debug.LogWarning("No avatar prefabs assigned!");
+    //         return null;
+    //     }
+    //
+    //     // Use username hash as seed for consistent results per user
+    //     Random.State originalState = Random.state;
+    //     Random.InitState(username.GetHashCode());
+    //
+    //     // Select random prefab from the list
+    //     GameObject selectedPrefab = avatarPrefabs[Random.Range(0, avatarPrefabs.Count)];
+    //
+    //     Random.state = originalState;
+    //     return selectedPrefab;
+    // }
+    
+    // private GameObject GetAvatarPrefab(ChatMessage message)
+    // {
+    //     string username = message.username.ToLower();
+    //
+    //     // Special case for broadcaster
+    //     if (username == chatClient.channel)
+    //     {
+    //         return broadcasterPrefab != null ? broadcasterPrefab : namazuPrefab;
+    //     }
+    //     
+    //     if (username == "darthblechman")
+    //     {
+    //         return namazuPrefab != null ? namazuPrefab : fatNamazuPrefab;
+    //     }
+    //
+    //     // Use username hash as seed for consistent results per user
+    //     Random.State originalState = Random.state;
+    //     Random.InitState(username.GetHashCode());
+    //
+    //     GameObject selectedPrefab;
+    //
+    //     // 40% chance for namazu family, 60% chance for dokujin
+    //     if (Random.Range(0f, 1f) < 0.4f)
+    //     {
+    //         // User gets a namazu - now decide which type
+    //         // 30% fat namazu, 70% normal namazu
+    //         selectedPrefab = Random.Range(0f, 1f) < 0.3f ? fatNamazuPrefab : namazuPrefab;
+    //     }
+    //     else
+    //     {
+    //         // User gets dokujin
+    //         selectedPrefab = dokujinPrefab;
+    //     }
+    //
+    //     Random.state = originalState;
+    //     return selectedPrefab;
+    // }
     
     private Vector3 GetRandomPointInBounds(Collider bounds)
     {

@@ -34,7 +34,7 @@ public class FallingEmote : MonoBehaviour
         isBeingCollected = false;
         
         // Load emote image
-        emoteManager.LoadEmoteImage(emoteData.imageUrl, emoteData.emoteName, spriteRenderer);
+      //  emoteManager.LoadEmoteImage(emoteData.imageUrl, emoteData.emoteName, spriteRenderer);
         
         // Set up camera look constraint
         var lookAt = GetComponentInChildren<LookAtConstraint>();
@@ -51,9 +51,12 @@ public class FallingEmote : MonoBehaviour
         emoteData = new EmoteData();
         hasLanded = false;
         isBeingCollected = false;
-        
-        // Clear sprite
-        emoteManager.ClearSprite(spriteRenderer);
+    
+        // Clear sprite directly instead of using emoteManager.ClearSprite
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = null;
+        }
     }
     
     private void OnCollisionEnter(Collision collision)

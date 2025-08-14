@@ -141,7 +141,7 @@ GameObject:
   - component: {fileID: 8044052518270289018}
   - component: {fileID: 5756552223126914364}
   - component: {fileID: 4713810972114128645}
-  m_Layer: 3
+  m_Layer: 8
   m_Name: Dokujunin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -196,8 +196,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkSpeed: 2
-  pauseMinTime: 20
-  pauseMaxTime: 50
+  pauseMinTime: 5
+  pauseMaxTime: 10
   targetReachDistance: 0.5
   animator: {fileID: 5206952864484218324}
   animationTransitionSpeed: 5
@@ -679,7 +679,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
+  m_LocalScale: {x: 0.6, y: 0.6, z: 0.6}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 6244117916840982685}

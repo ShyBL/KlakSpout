@@ -69,8 +69,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkSpeed: 2
-  pauseMinTime: 20
-  pauseMaxTime: 50
+  pauseMinTime: 5
+  pauseMaxTime: 10
   targetReachDistance: 0.5
   animator: {fileID: 3942175081261155244}
   animationTransitionSpeed: 5

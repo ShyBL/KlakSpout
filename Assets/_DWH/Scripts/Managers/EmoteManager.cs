@@ -160,22 +160,29 @@ public class EmoteManager : MonoBehaviour
             Debug.LogError("Spawn bounds not set!");
             return;
         }
-        
+    
         GameObject emoteObj = emotePool.Get();
         if (emoteObj == null) return;
-        
+    
         // Get random spawn position within bounds
         Vector3 spawnPosition = GetRandomSpawnPosition();
-        
+    
         // Initialize the falling emote
         FallingEmote fallingEmote = emoteObj.GetComponent<FallingEmote>();
         if (fallingEmote != null)
         {
+            // Set fallback sprite directly instead of loading from web
+            SpriteRenderer spriteRenderer = emoteObj.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                SetFallbackSprite(spriteRenderer);
+            }
+        
             fallingEmote.Initialize(emoteData, spawnPosition, cameraToLook.transform);
-            
+        
             // Set parent for organization
             emoteObj.transform.SetParent(transform);
-            
+        
             // Schedule cleanup
             StartCoroutine(CleanupEmoteAfterTime(emoteObj, emoteLifetime));
         }
@@ -283,72 +290,72 @@ public class EmoteManager : MonoBehaviour
         return landedEmotes.Count;
     }
     
-    private Coroutine imageLoadCoroutine;
-    
-    public void LoadEmoteImage(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
-    {
-        if (imageLoadCoroutine != null)
-        {
-            StopCoroutine(imageLoadCoroutine);
-        }
-        
-        imageLoadCoroutine = StartCoroutine(LoadEmoteImageCoroutine(imageUrl, emoteName, spriteRenderer));
-    }
-    
-    public void ClearSprite(SpriteRenderer spriteRenderer)
-    {
-        if (imageLoadCoroutine != null)
-        {
-            StopCoroutine(imageLoadCoroutine);
-            imageLoadCoroutine = null;
-        }
-        
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.sprite = null;
-        }
-    }
-    
-    private IEnumerator LoadEmoteImageCoroutine(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
-    {
-        using (UnityWebRequest www = UnityWebRequestTexture.GetTexture(imageUrl))
-        {
-            yield return www.SendWebRequest();
-            
-            if (www.result == UnityWebRequest.Result.Success)
-            {
-                Texture2D texture = DownloadHandlerTexture.GetContent(www);
-                
-                if (texture != null && spriteRenderer != null)
-                {
-                    // Create sprite from texture
-                    Sprite emoteSprite = Sprite.Create(
-                        texture,
-                        new Rect(0, 0, texture.width, texture.height),
-                        new Vector2(0.5f, 0.5f), // Pivot at center
-                        100f // Pixels per unit
-                    );
-                    
-                    spriteRenderer.sprite = emoteSprite;
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"Failed to load emote image: {emoteName} - {www.error}");
-                
-                // Use fallback sprite instead of creating a colored square
-                SetFallbackSprite(spriteRenderer);
-            }
-        }
-        
-        imageLoadCoroutine = null;
-    }
+    // private Coroutine imageLoadCoroutine;
+    //
+    // public void LoadEmoteImage(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    // {
+    //     if (imageLoadCoroutine != null)
+    //     {
+    //         StopCoroutine(imageLoadCoroutine);
+    //     }
+    //     
+    //     imageLoadCoroutine = StartCoroutine(LoadEmoteImageCoroutine(imageUrl, emoteName, spriteRenderer));
+    // }
+    //
+    // public void ClearSprite(SpriteRenderer spriteRenderer)
+    // {
+    //     if (imageLoadCoroutine != null)
+    //     {
+    //         StopCoroutine(imageLoadCoroutine);
+    //         imageLoadCoroutine = null;
+    //     }
+    //     
+    //     if (spriteRenderer != null)
+    //     {
+    //         spriteRenderer.sprite = null;
+    //     }
+    // }
+    //
+    // private IEnumerator LoadEmoteImageCoroutine(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    // {
+    //     using (UnityWebRequest www = UnityWebRequestTexture.GetTexture(imageUrl))
+    //     {
+    //         yield return www.SendWebRequest();
+    //         
+    //         if (www.result == UnityWebRequest.Result.Success)
+    //         {
+    //             Texture2D texture = DownloadHandlerTexture.GetContent(www);
+    //             
+    //             if (texture != null && spriteRenderer != null)
+    //             {
+    //                 // Create sprite from texture
+    //                 Sprite emoteSprite = Sprite.Create(
+    //                     texture,
+    //                     new Rect(0, 0, texture.width, texture.height),
+    //                     new Vector2(0.5f, 0.5f), // Pivot at center
+    //                     100f // Pixels per unit
+    //                 );
+    //                 
+    //                 spriteRenderer.sprite = emoteSprite;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             Debug.LogWarning($"Failed to load emote image: {emoteName} - {www.error}");
+    //             
+    //             // Use fallback sprite instead of creating a colored square
+    //             SetFallbackSprite(spriteRenderer);
+    //         }
+    //     }
+    //     
+    //     imageLoadCoroutine = null;
+    // }
     
     private void SetFallbackSprite(SpriteRenderer spriteRenderer)
     {
         if (spriteRenderer == null) return;
-        
-        // Use random sprite from fallback list if available
+    
+        // Always use random sprite from fallback list
         if (fallbackEmoteSprites != null && fallbackEmoteSprites.Length > 0)
         {
             int randomIndex = Random.Range(0, fallbackEmoteSprites.Length);
