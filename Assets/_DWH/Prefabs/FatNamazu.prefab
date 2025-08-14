@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 8044052518270289018}
   - component: {fileID: 5756552223126914364}
   - component: {fileID: 4713810972114128645}
-  m_Layer: 3
+  m_Layer: 8
   m_Name: FatNamazu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -69,11 +69,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkSpeed: 2
-  pauseMinTime: 2
-  pauseMaxTime: 5
+  pauseMinTime: 20
+  pauseMaxTime: 50
   targetReachDistance: 0.5
   animator: {fileID: 3942175081261155244}
-  animationTransitionSpeed: 1
+  animationTransitionSpeed: 5
 --- !u!54 &8044052518270289018
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -93,7 +93,7 @@ Rigidbody:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 256
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1

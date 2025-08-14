@@ -195,10 +195,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d29a5c5dadd84550b0f12baf5359be53, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 0.5
-  pauseMinTime: 5
-  pauseMaxTime: 10
-  targetReachDistance: 1
+  walkSpeed: 2
+  pauseMinTime: 20
+  pauseMaxTime: 50
+  targetReachDistance: 0.5
   animator: {fileID: 5206952864484218324}
   animationTransitionSpeed: 5
 --- !u!54 &8044052518270289018
@@ -220,7 +220,7 @@ Rigidbody:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 256
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
