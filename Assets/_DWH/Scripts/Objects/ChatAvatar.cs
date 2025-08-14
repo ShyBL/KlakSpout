@@ -111,7 +111,7 @@ public class ChatAvatar : MonoBehaviour
             // Set destination to emote position
             isDetectingEmote = true;
             detectedEmote = emote;
-            walkBehavior.SetNewTarget(emote.transform);
+            walkBehavior.EnqueueTarget(emote.transform.position);
             Debug.Log($"{username} moving to collect emote: {emote.EmoteData.emoteName}");
         }
     }
