@@ -104,6 +104,44 @@ public class BlendShapeController : MonoBehaviour
     }
 
     /// <summary>
+    /// Performs eating animation with specified number of chews
+    /// </summary>
+    /// <param name="chewCount">Number of times to chew</param>
+    /// <param name="chewSpeed">Speed of each chew cycle</param>
+    /// <returns>Total duration of eating animation</returns>
+    public IEnumerator EatAnimation(int chewCount = 3, float chewSpeed = 0.3f)
+    {
+        if (mouthBlendShapeIndex < 0) yield break;
+
+        float originalPosition = skinnedMeshRenderer.GetBlendShapeWeight(mouthBlendShapeIndex);
+        
+        // Perform chewing cycles
+        for (int i = 0; i < chewCount; i++)
+        {
+            // Close mouth (chew down)
+            yield return StartCoroutine(AnimateBlendShape(mouthBlendShapeIndex, 100f, chewSpeed));
+            // Open mouth (chew up)  
+            yield return StartCoroutine(AnimateBlendShape(mouthBlendShapeIndex, 0f, chewSpeed));
+        }
+        
+        // Return to original position
+        yield return StartCoroutine(AnimateBlendShape(mouthBlendShapeIndex, originalPosition, chewSpeed));
+    }
+
+    /// <summary>
+    /// Gets the total duration for eating animation
+    /// </summary>
+    /// <param name="chewCount">Number of chews</param>
+    /// <param name="chewSpeed">Speed per chew cycle</param>
+    /// <returns>Total eating duration in seconds</returns>
+    public float GetEatingDuration(int chewCount = 3, float chewSpeed = 0.3f)
+    {
+        // Each chew cycle = close + open (2 animations)
+        // Plus final return to original position
+        return (chewCount * 2 + 1) * chewSpeed;
+    }
+
+    /// <summary>
     /// Animates a single blend shape to target value
     /// </summary>
     private IEnumerator AnimateBlendShape(int blendShapeIndex, float targetValue, float duration)

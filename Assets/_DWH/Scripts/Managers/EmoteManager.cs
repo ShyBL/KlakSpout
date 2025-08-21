@@ -172,7 +172,7 @@ public class EmoteManager : MonoBehaviour
         if (fallingEmote != null)
         {
             // Set fallback sprite directly instead of loading from web
-            SpriteRenderer spriteRenderer = emoteObj.GetComponent<SpriteRenderer>();
+            SpriteRenderer spriteRenderer = emoteObj.GetComponentInChildren<SpriteRenderer>();
             if (spriteRenderer != null)
             {
                 SetFallbackSprite(spriteRenderer);
