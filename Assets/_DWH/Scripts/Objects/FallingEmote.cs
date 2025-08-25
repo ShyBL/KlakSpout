@@ -14,7 +14,8 @@ public class FallingEmote : MonoBehaviour
     public bool IsBeingCollected => isBeingCollected;
     
     private EmoteManager emoteManager;
-    
+    private Rigidbody rb;
+
     private void Awake()
     {
         emoteManager = FindObjectOfType<EmoteManager>();
@@ -24,6 +25,7 @@ public class FallingEmote : MonoBehaviour
             return;
         }
         spriteRenderer = GetComponent<SpriteRenderer>();
+        rb = GetComponent<Rigidbody>();
     }
     
     public void Initialize(EmoteData data, Vector3 spawnPosition, Transform cameraToLook)
@@ -51,7 +53,12 @@ public class FallingEmote : MonoBehaviour
         emoteData = new EmoteData();
         hasLanded = false;
         isBeingCollected = false;
-    
+        
+        if (rb.isKinematic)
+        {
+            rb.isKinematic = false;
+        }
+        
         // Clear sprite directly instead of using emoteManager.ClearSprite
         if (spriteRenderer != null)
         {
@@ -59,13 +66,14 @@ public class FallingEmote : MonoBehaviour
         }
     }
     
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
         // Check if we hit the ground
-        if (!hasLanded && collision.gameObject.CompareTag("Ground"))
+        if (!hasLanded && other.gameObject.CompareTag("Ground"))
         {
             hasLanded = true;
             OnLanded();
+            rb.isKinematic = true;
         }
     }
     
@@ -91,6 +99,10 @@ public class FallingEmote : MonoBehaviour
     public void OnCollected()
     {
         // Called when avatar successfully collects this emote
+        if (rb.isKinematic)
+        {
+            rb.isKinematic = false;
+        }
         emoteManager.ReturnEmoteToPool(this);
     }
 }

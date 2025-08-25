@@ -7,17 +7,20 @@ using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
 {
+    public ChatMessage messageData;
+    
     [Header("Visuals")]
     [SerializeField] private Renderer avatarRenderer;
-    [SerializeField] private Transform avatarTransform;
+    [SerializeField] public Transform avatarTransform;
     [SerializeField] private BlendShapeController avatarBlendShape;
     [SerializeField] private float growFactor = 0.5f;
-        
+    [SerializeField] private float maxScale = 3f;
+    
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
     [SerializeField] private GameObject nameTagObject;
+    
     private string username;
-    private ChatMessage messageData;
     private DateTime lastActivityTime;
     private FallingEmote detectedEmote;
 
@@ -26,7 +29,7 @@ public class ChatAvatar : MonoBehaviour
     private TMP_Text nameTag;
     private GameObject cameraToLook;
     private WalkBehavior walkBehavior;
-    
+    private Transform vipRockTarget;
     
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
@@ -133,7 +136,63 @@ public class ChatAvatar : MonoBehaviour
         // Start eating sequence
         StartCoroutine(EatingSequence(emote));
     }
-
+    
+    public void MoveToVipRock(Transform vipRock)
+    {
+        if (walkBehavior != null)
+        {
+            // Set destination to VIP rock position
+            walkBehavior.StopWalking();
+            transform.SetParent(vipRock);
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            //walkBehavior.EnqueueTarget(vipRock.position);
+            //walkBehavior.StartWalking();
+            vipRockTarget = vipRock; // Store reference for when we arrive
+            
+            AvatarCommandManager commandManager = FindObjectOfType<AvatarCommandManager>();
+            if (commandManager != null)
+            {
+                commandManager.OnAvatarMountedVipRock(username);
+            }
+            
+            vipRockTarget = null; // Clear the target
+            
+            Debug.Log($"{username} moving to VIP rock");
+        }
+    }
+    
+    public bool CheckIfReachedVipRock(Vector3 reachedPosition)
+    {
+        if (vipRockTarget != null)
+        {
+            float distance = Vector3.Distance(reachedPosition, vipRockTarget.position);
+            if (distance < 1f) // Close enough to VIP rock
+            {
+                // We've reached the VIP rock - stop walking and mount it
+                walkBehavior.StopWalking();
+            
+                // Parent to the rock and reset position
+                transform.SetParent(vipRockTarget);
+                transform.localPosition = Vector3.zero;
+                transform.localRotation = Quaternion.identity;
+            
+                Debug.Log($"{username} has mounted the VIP rock!");
+            
+                // Notify the command manager
+                AvatarCommandManager commandManager = FindObjectOfType<AvatarCommandManager>();
+                if (commandManager != null)
+                {
+                    commandManager.OnAvatarMountedVipRock(username);
+                }
+            
+                vipRockTarget = null; // Clear the target
+                return true;
+            }
+        }
+        return false;
+    }
+    
     private IEnumerator EatingSequence(FallingEmote emote)
     {
         int chewCount = Random.Range(2, 5); // Random number of chews
@@ -146,9 +205,16 @@ public class ChatAvatar : MonoBehaviour
         // Start eating animation
         yield return StartCoroutine(avatarBlendShape.EatAnimation(chewCount, chewSpeed));
         
-        // Grow avatar slightly after eating
+        // Grow avatar slightly after eating, but clamp to maximum size
         Vector3 currentScale = avatarTransform.localScale;
-        avatarTransform.localScale = currentScale + Vector3.one * growFactor;
+        Vector3 newScale = currentScale + Vector3.one * growFactor;
+        
+        // Clamp each axis to the maximum scale
+        newScale.x = Mathf.Min(newScale.x, maxScale);
+        newScale.y = Mathf.Min(newScale.y, maxScale);
+        newScale.z = Mathf.Min(newScale.z, maxScale);
+        
+        avatarTransform.localScale = newScale;
 
         Debug.Log($"{username} ate emote: {emote.EmoteData.emoteName} with {chewCount} chews - New scale: {avatarTransform.localScale.x:F2}");
         

@@ -11,7 +11,9 @@ public class EmoteManager : MonoBehaviour
     [SerializeField] private GameObject emotePrefab;
     [SerializeField] private Collider spawnBounds;
     [SerializeField] private Transform emoteParent;
-    
+    [SerializeField] private int maxEmotesPerMessage = 10;
+    [SerializeField] private int maxTotalEmotes = 50;
+
     [Header("Fallback Emotes")]
     [SerializeField] private Sprite[] fallbackEmoteSprites;
     
@@ -143,11 +145,19 @@ public class EmoteManager : MonoBehaviour
         var uniqueEmotes = EmoteData.FromEmoteInfoArray(message.emotes)
             .Where(e => !string.IsNullOrEmpty(e.emoteId))
             .GroupBy(e => e.emoteId)
-            .Select(g => g.First());
+            .Select(g => g.First())
+            .Take(maxEmotesPerMessage);
         
+        int spawnedCount = 0;
         foreach (EmoteData emoteData in uniqueEmotes)
         {
+            if (maxTotalEmotes > 0 && GetActiveEmoteCount() >= maxTotalEmotes)
+            {
+                Debug.Log($"Reached maximum total emotes ({maxTotalEmotes}), skipping spawn");
+                break;
+            }
             SpawnEmote(emoteData);
+            spawnedCount++;
         }
         
         Debug.Log($"Spawned {emoteDataArray.Length} emotes from {message.username}");
@@ -275,6 +285,7 @@ public class EmoteManager : MonoBehaviour
             if (fallingEmote != null && !fallingEmote.IsBeingCollected)
             {
                 Debug.Log($"Cleaning up uncollected emote: {fallingEmote.EmoteData.emoteName}");
+                fallingEmote.ResetEmote();
                 ReturnEmoteToPool(emoteObj);
             }
         }

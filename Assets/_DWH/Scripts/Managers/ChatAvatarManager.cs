@@ -1,30 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-
-[System.Serializable]
-public class AvatarFamily
-{
-    public string familyName;
-    [Range(0f, 100f)]
-    public float spawnChance;
-    public List<AvatarVariant> variants = new List<AvatarVariant>();
-}
-
-[System.Serializable]
-public class AvatarVariant
-{
-    public string variantName;
-    public GameObject prefab;
-    [Range(0f, 100f)]
-    public float variantChance;
-}
 
 public class ChatAvatarManager : MonoBehaviour
 {
     [Header("Avatar Prefabs")]
-//    [SerializeField] private List<GameObject> avatarPrefabs = new List<GameObject>();
-    [SerializeField] private GameObject broadcasterPrefab; 
+    [SerializeField] private GameObject fallbackPrefab; 
     [SerializeField] private List<AvatarFamily> avatarFamilies = new List<AvatarFamily>();
     
     [Header("Bounds Settings")]
@@ -201,18 +183,12 @@ public class ChatAvatarManager : MonoBehaviour
     private GameObject GetAvatarPrefab(ChatMessage message)
     {
         string username = message.username.ToLower();
-    
-        // Special case for broadcaster
-        if (username == chatClient.channel)
-        {
-            return broadcasterPrefab;
-        }
-    
+        
         // Check if we have any families available
         if (avatarFamilies.Count == 0)
         {
             Debug.LogWarning("No avatar families assigned!");
-            return broadcasterPrefab; // Fallback
+            return fallbackPrefab; // Fallback
         }
     
         // Select family based on weighted random
@@ -220,13 +196,13 @@ public class ChatAvatarManager : MonoBehaviour
         if (selectedFamily == null || selectedFamily.variants.Count == 0)
         {
             Debug.LogWarning("Selected family has no variants!");
-            return broadcasterPrefab; // Fallback
+            return fallbackPrefab; // Fallback
         }
     
         // Select variant within the family
         AvatarVariant selectedVariant = SelectWeightedVariant(selectedFamily);
         
-        return selectedVariant?.prefab ?? broadcasterPrefab; // Fallback if null
+        return selectedVariant?.prefab ?? fallbackPrefab; // Fallback if null
     }
     
     private AvatarFamily SelectWeightedFamily()
@@ -415,6 +391,11 @@ public class ChatAvatarManager : MonoBehaviour
         }
     }
     
+    public ChatAvatar[] GetActiveAvatars()
+    {
+        return activeAvatars.Values.ToArray();
+    }
+    
     public void ClearAllAvatars()
     {
         List<string> allUsernames = new List<string>(activeAvatars.Keys);
@@ -444,6 +425,25 @@ public class ChatAvatarManager : MonoBehaviour
         {
             Gizmos.color = Color.blue;
             Gizmos.DrawWireCube(walkBounds.bounds.center, walkBounds.bounds.size);
+        }
+    }
+
+    /// <summary>
+    /// Despawns a user's current avatar and spawns a new one, effectively "rerolling" it.
+    /// </summary>
+    /// <param name="username">The user to reroll.</param>
+    public void RerollAvatar(string username)
+    {
+        string lowerUsername = username.ToLower();
+        if (activeAvatars.TryGetValue(lowerUsername, out ChatAvatar avatar))
+        {
+            // To respawn, we need the original message.
+            // This assumes you store the initial message on the ChatAvatar script as suggested.
+            ChatMessage initialMessage = avatar.GetComponent<ChatAvatar>().messageData;
+
+            Debug.Log($"Rerolling avatar for {username}...");
+            RemoveAvatar(lowerUsername);
+            SpawnAvatar(lowerUsername, initialMessage);
         }
     }
 }

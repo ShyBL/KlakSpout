@@ -259,6 +259,13 @@ public class TwitchChatClient : MonoBehaviour
     
     void ParseMessageTags(ref ChatMessage message, Dictionary<string, string> tags)
     {
+        // Parse custom reward ID for channel point redemptions
+        if (tags.TryGetValue("custom-reward-id", out string rewardId))
+        {
+            message.customRewardId = rewardId;
+            message.type = MessageType.ChannelPointRedemption;
+        }
+        
         // Parse badges
         if (tags.ContainsKey("badges") && !string.IsNullOrEmpty(tags["badges"]))
         {

@@ -86,6 +86,14 @@ public class WalkBehavior : MonoBehaviour
             isCurrentlyMoving = false;
             UpdateAnimation(false);
 
+            // Check if this was a VIP rock destination
+            ChatAvatar avatar = GetComponent<ChatAvatar>();
+            if (avatar != null && avatar.CheckIfReachedVipRock(currentTargetPosition))
+            {
+                // Don't start normal pause - avatar will handle VIP rock logic
+                return;
+            }
+
             isPaused = true;
             pauseTimer = Random.Range(pauseMinTime, pauseMaxTime);
         }
