@@ -150,10 +150,10 @@ public class ChatAvatar : MonoBehaviour
             //walkBehavior.StartWalking();
             vipRockTarget = vipRock; // Store reference for when we arrive
             
-            AvatarCommandManager commandManager = FindObjectOfType<AvatarCommandManager>();
-            if (commandManager != null)
+            CommandsManager commandsManager = FindObjectOfType<CommandsManager>();
+            if (commandsManager != null)
             {
-                commandManager.OnAvatarMountedVipRock(username);
+                commandsManager.OnAvatarMountedVipRock(username);
             }
             
             vipRockTarget = null; // Clear the target
@@ -180,10 +180,10 @@ public class ChatAvatar : MonoBehaviour
                 Debug.Log($"{username} has mounted the VIP rock!");
             
                 // Notify the command manager
-                AvatarCommandManager commandManager = FindObjectOfType<AvatarCommandManager>();
-                if (commandManager != null)
+                CommandsManager commandsManager = FindObjectOfType<CommandsManager>();
+                if (commandsManager != null)
                 {
-                    commandManager.OnAvatarMountedVipRock(username);
+                    commandsManager.OnAvatarMountedVipRock(username);
                 }
             
                 vipRockTarget = null; // Clear the target

@@ -2,7 +2,7 @@
 using UnityEngine;
 using System.Linq;
 
-public class AvatarCommandManager : MonoBehaviour
+public class CommandsManager : MonoBehaviour
 {
     [Header("Channel Point Reward IDs")]
     [Tooltip("The Custom Reward ID from your Twitch dashboard for the 'VIP' redemption.")]
@@ -84,15 +84,15 @@ public class AvatarCommandManager : MonoBehaviour
         }
         else if (rewardId == rerollRewardId)
         {
-            HandleRerollCommand(message.username);
+            HandleRerollRedeem(message.username);
         }
         else if (rewardId == duelRewardId)
         {
-            HandleDuelCommand(message.username);
+            HandleDuelRedeem(message.username);
         }
         else if (rewardId == colorifyRewardId)
         {
-            HandleColorifyCommand(message.username);
+            HandleColorifyRedeem(message.username);
         }
     }
     
@@ -120,13 +120,13 @@ public class AvatarCommandManager : MonoBehaviour
         }
     }
     
-    private void HandleRerollCommand(string username)
+    private void HandleRerollRedeem(string username)
     {
         avatarManager.RerollAvatar(username);
         SendAutoMessage($"@{username} has rerolled their avatar!");
     }
 
-    private void HandleDuelCommand(string username)
+    private void HandleDuelRedeem(string username)
     {
         ChatAvatar challenger = FindAvatarByUsername(username);
         if (challenger == null) return;
@@ -167,7 +167,7 @@ public class AvatarCommandManager : MonoBehaviour
         avatarManager.RemoveAvatar(loser.Username); // Remove the loser
     }
 
-    private void HandleColorifyCommand(string username)
+    private void HandleColorifyRedeem(string username)
     {
         ChatAvatar avatar = FindAvatarByUsername(username);
         if (avatar != null)
