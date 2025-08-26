@@ -161,6 +161,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 3386086502740064050}
   - {fileID: 1412006071901830348}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -176,10 +177,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94157b0c456f4b95b8347a06ec8344a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  messageData:
+    type: 0
+    username: 
+    message: 
+    customRewardId: 
+    isSubscriber: 0
+    isModerator: 0
+    isVip: 0
+    isBroadcaster: 0
+    badges: []
+    hasEmotes: 0
+    emotes: []
+    hasBits: 0
+    bitsAmount: 0
+    noticeType: 0
+    systemMessage: 
+    subMonths: 0
+    raidFrom: 
+    raidViewers: 0
   avatarRenderer: {fileID: 2701792585350831070}
   avatarTransform: {fileID: 1412006071901830348}
   avatarBlendShape: {fileID: 3910274900428328054}
   growFactor: 0.05
+  maxScale: 3
   despawnTimeMinutes: 10
   nameTagObject: {fileID: 4309116509513915276}
   isDetectingEmote: 0
@@ -684,7 +705,6 @@ Transform:
   m_Children:
   - {fileID: 6244117916840982685}
   - {fileID: 1802265210391360943}
-  - {fileID: 3386086502740064050}
   m_Father: {fileID: 4972420470536718354}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &5206952864484218324
@@ -2025,16 +2045,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4309116509513915276}
-  m_LocalRotation: {x: -0, y: 0.9257248, z: -0, w: 0.3781979}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_LocalScale: {x: 1.2000003, y: 1.2, z: 1.2000003}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1412006071901830348}
-  m_LocalEulerAnglesHint: {x: 0, y: 135.556, z: 0}
+  m_Father: {fileID: 4972420470536718354}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 1.4}
+  m_AnchoredPosition: {x: 0, y: 0.7}
   m_SizeDelta: {x: 20, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!23 &3889787762857719060
