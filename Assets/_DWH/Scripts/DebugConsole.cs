@@ -7,18 +7,42 @@ public class DebugConsole : MonoBehaviour
     private readonly List<string> logs = new();
     private Vector2 scrollPosition;
     private Vector2 avatarScrollPosition;
-    private bool showConsole;
+    // Removed showConsole variable - console will always be shown
     
     [Header("Avatar Management")]
+    [SerializeField] private ChatAvatarManager avatarManager;
     [SerializeField] private int maxAvatarButtons = 20;
+    
+    [Header("UI Layout Parameters")]
+    [SerializeField] private float panelMargin = 10f;
+    [SerializeField] private float panelSpacing = 10f;
+    [SerializeField] private float avatarPanelWidth = 170f;
+    [SerializeField] private float consoleHeightRatio = 0.33f; // Fraction of screen height
+    
+    [Header("Avatar Panel Settings")]
     [SerializeField] private float buttonWidth = 150f;
     [SerializeField] private float buttonHeight = 25f;
+    [SerializeField] private float buttonSpacing = 2f;
+    [SerializeField] private int buttonFontSize = 16;
+    [SerializeField] private float headerHeight = 20f;
+    [SerializeField] private float infoSpacing = 15f;
     
-    private ChatAvatarManager avatarManager;
+    [Header("Avatar Options Popup")]
+    [SerializeField] private float optionsWidth = 150f;
+    [SerializeField] private float optionsButtonSpacing = 5f;
+    [SerializeField] private float optionsPopupOffset = 10f;
+    
+    [Header("Console Panel Settings")]
+    [SerializeField] private float logLineHeight = 20f;
+    [SerializeField] private int logFontSize = 16;
+    [SerializeField] private int maxLogEntries = 1000;
     
     // State for avatar options
-    private string selectedAvatar = "";
+    private ChatAvatar selectedAvatarObject = null;
     private bool showAvatarOptions = false;
+    
+    // Custom GUIStyle for the console logs
+    private GUIStyle logStyle;
 
     private void Start()
     {
@@ -27,61 +51,45 @@ public class DebugConsole : MonoBehaviour
         {
             avatarManager = FindObjectOfType<ChatAvatarManager>();
         }
+        logStyle.fontSize = logFontSize;
     }
 
     private void OnEnable()
     {
         Application.logMessageReceived += HandleLog;
+        
     }
 
     private void OnDisable()
     {
         Application.logMessageReceived -= HandleLog;
     }
-
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            showConsole = !showConsole;
-        }
-        
-        // Close avatar options if clicking elsewhere
-        if (showAvatarOptions && Input.GetMouseButtonDown(0))
-        {
-            Vector2 mousePos = Input.mousePosition;
-            // Convert to GUI coordinates
-            mousePos.y = Screen.height - mousePos.y;
-            
-            Rect avatarOptionsRect = new Rect(buttonWidth + 10, 35, buttonWidth, buttonHeight * 2 + 10);
-            
-            if (!avatarOptionsRect.Contains(mousePos))
-            {
-                showAvatarOptions = false;
-                selectedAvatar = "";
-            }
-        }
-    }
-
+    
     private void HandleLog(string logString, string stackTrace, LogType type)
     {
         logs.Add(logString);
-        if (logs.Count > 1000) logs.RemoveAt(0);
+        if (logs.Count > maxLogEntries) logs.RemoveAt(0);
     }
 
     private void OnGUI()
     {
-        if (!showConsole) return;
-
-        float avatarPanelWidth = buttonWidth + 20;
-        float consolePanelX = avatarPanelWidth + 10;
-        float consolePanelWidth = Screen.width - consolePanelX - 10;
+        // Initialize the style only once for efficiency.
+        if (logStyle == null)
+        {
+            logStyle = new GUIStyle(GUI.skin.label)
+            {
+                wordWrap = true // Helps with long log messages
+            };
+        }
+        
+        float consolePanelX = avatarPanelWidth + panelMargin + panelSpacing;
+        float consolePanelWidth = Screen.width - consolePanelX - panelMargin;
 
         // Avatar Management Panel
-        DrawAvatarPanel(avatarPanelWidth);
+        DrawAvatarPanel();
         
         // Debug Console Panel
-       // DrawConsolePanel(consolePanelX, consolePanelWidth);
+        //DrawConsolePanel(consolePanelX, consolePanelWidth);
         
         // Avatar Options Popup
         if (showAvatarOptions)
@@ -90,45 +98,68 @@ public class DebugConsole : MonoBehaviour
         }
     }
     
-    private void DrawAvatarPanel(float panelWidth)
+    private void DrawAvatarPanel()
     {
-        GUI.Box(new Rect(10, 10, panelWidth, Screen.height / 3), "Avatar Manager");
+        float panelHeight = Screen.height * consoleHeightRatio;
+        GUI.Box(new Rect(panelMargin, panelMargin, avatarPanelWidth, panelHeight), "Avatar Manager");
         
-        // Get active avatars
-        ChatAvatar[] activeAvatars = avatarManager != null ? avatarManager.GetActiveAvatars() : new ChatAvatar[0];
+        // Get ALL avatar objects (including buggy ones)
+        ChatAvatar[] allAvatars = GetAllAvatarObjects();
         
-        // Info header
-        GUI.Label(new Rect(15, 35, panelWidth - 10, 20), $"Active Avatars: {activeAvatars.Length}");
+        // Count valid vs invalid avatars
+        int validCount = allAvatars.Count(a => !string.IsNullOrEmpty(a.Username));
+        int invalidCount = allAvatars.Length - validCount;
+        
+        // Info header with counts
+        string headerText = $"Total: {allAvatars.Length} | Valid: {validCount}";
+        if (invalidCount > 0)
+        {
+            headerText += $" | BUGGY: {invalidCount}";
+        }
+        
+        GUI.Label(new Rect(panelMargin + 5, panelMargin + headerHeight + 5, avatarPanelWidth - 10, headerHeight), headerText);
         
         // Scrollable avatar list
-        float scrollViewHeight = Screen.height / 3 - 70;
-        float contentHeight = Mathf.Max(activeAvatars.Length * (buttonHeight + 2), scrollViewHeight);
+        float scrollViewY = panelMargin + headerHeight + infoSpacing + headerHeight;
+        float scrollViewHeight = panelHeight - (headerHeight + infoSpacing + headerHeight + 10);
+        float contentHeight = Mathf.Max(allAvatars.Length * (buttonHeight + buttonSpacing), scrollViewHeight);
         
         avatarScrollPosition = GUI.BeginScrollView(
-            new Rect(10, 55, panelWidth, scrollViewHeight),
+            new Rect(panelMargin, scrollViewY, avatarPanelWidth, scrollViewHeight),
             avatarScrollPosition,
-            new Rect(0, 0, panelWidth - 20, contentHeight)
+            new Rect(0, 0, avatarPanelWidth - 20, contentHeight)
         );
 
         // Draw avatar buttons (limit to maxAvatarButtons)
-        int buttonCount = Mathf.Min(activeAvatars.Length, maxAvatarButtons);
+        int buttonCount = Mathf.Min(allAvatars.Length, maxAvatarButtons);
         for (int i = 0; i < buttonCount; i++)
         {
-            if (activeAvatars[i] != null)
+            if (allAvatars[i] != null)
             {
-                string username = activeAvatars[i].Username;
-                float buttonY = i * (buttonHeight + 2);
+                ChatAvatar avatar = allAvatars[i];
+                string displayName = GetAvatarDisplayName(avatar);
+                float buttonY = i * (buttonHeight + buttonSpacing);
                 
                 // Highlight selected avatar
                 Color originalColor = GUI.backgroundColor;
-                if (selectedAvatar == username)
+                if (selectedAvatarObject == avatar)
                 {
                     GUI.backgroundColor = Color.yellow;
                 }
                 
-                if (GUI.Button(new Rect(5, buttonY, buttonWidth - 10, buttonHeight), username))
+                // Color buggy avatars red
+                bool isBuggy = string.IsNullOrEmpty(avatar.Username);
+                if (isBuggy && selectedAvatarObject != avatar)
                 {
-                    if (selectedAvatar == username)
+                    GUI.backgroundColor = new Color(1f, 0.5f, 0.5f); // Light red
+                }
+                
+                GUIStyle avatarButtonStyle = new GUIStyle(GUI.skin.button);
+                avatarButtonStyle.fontSize = buttonFontSize;
+                
+                if (GUI.Button(new Rect(5, buttonY, buttonWidth, buttonHeight), displayName, avatarButtonStyle))
+                {
+                    if (selectedAvatarObject == avatar)
                     {
                         // Toggle options if same avatar clicked
                         showAvatarOptions = !showAvatarOptions;
@@ -136,7 +167,7 @@ public class DebugConsole : MonoBehaviour
                     else
                     {
                         // Select new avatar
-                        selectedAvatar = username;
+                        selectedAvatarObject = avatar;
                         showAvatarOptions = true;
                     }
                 }
@@ -145,30 +176,55 @@ public class DebugConsole : MonoBehaviour
             }
         }
         
-        if (activeAvatars.Length > maxAvatarButtons)
+        if (allAvatars.Length > maxAvatarButtons)
         {
-            float warningY = buttonCount * (buttonHeight + 2);
-            GUI.Label(new Rect(5, warningY, buttonWidth - 10, buttonHeight), 
-                     $"... +{activeAvatars.Length - maxAvatarButtons} more", 
+            float warningY = buttonCount * (buttonHeight + buttonSpacing);
+            GUI.Label(new Rect(5, warningY, buttonWidth, buttonHeight), 
+                     $"... +{allAvatars.Length - maxAvatarButtons} more", 
                      GUI.skin.box);
         }
 
         GUI.EndScrollView();
     }
     
+    private ChatAvatar[] GetAllAvatarObjects()
+    {
+        // Find all ChatAvatar objects in the scene, regardless of their state
+        ChatAvatar[] allAvatars = FindObjectsOfType<ChatAvatar>();
+        
+        // Sort them: buggy ones first, then by username
+        return allAvatars.OrderBy(avatar => 
+        {
+            if (string.IsNullOrEmpty(avatar.Username))
+                return "0_BUGGY_" + avatar.GetInstanceID(); // Buggy avatars first
+            return "1_" + avatar.Username; // Then valid ones
+        }).ToArray();
+    }
+    
+    private string GetAvatarDisplayName(ChatAvatar avatar)
+    {
+        if (string.IsNullOrEmpty(avatar.Username))
+        {
+            return $"[BUGGY] ID:{avatar.GetInstanceID()}";
+        }
+        return avatar.Username;
+    }
+    
     private void DrawConsolePanel(float panelX, float panelWidth)
     {
-        GUI.Box(new Rect(panelX, 10, panelWidth, Screen.height / 3), "Debug Console");
+        float panelHeight = Screen.height * consoleHeightRatio;
+        GUI.Box(new Rect(panelX, panelMargin, panelWidth, panelHeight), "Debug Console");
             
         scrollPosition = GUI.BeginScrollView(
-            new Rect(panelX, 35, panelWidth, Screen.height / 3 - 45),
+            new Rect(panelX, panelMargin + headerHeight + 5, panelWidth, panelHeight - headerHeight - 15),
             scrollPosition,
-            new Rect(0, 0, panelWidth - 20, logs.Count * 20)
+            new Rect(0, 0, panelWidth - 20, logs.Count * logLineHeight)
         );
 
         for (int i = 0; i < logs.Count; i++)
         {
-            GUI.Label(new Rect(0, i * 20, panelWidth - 20, 20), logs[i]);
+            // Use the custom logStyle with the larger font size
+            GUI.Label(new Rect(0, i * logLineHeight, panelWidth - 20, logLineHeight), logs[i], logStyle);
         }
 
         GUI.EndScrollView();
@@ -176,34 +232,57 @@ public class DebugConsole : MonoBehaviour
     
     private void DrawAvatarOptions()
     {
-        if (string.IsNullOrEmpty(selectedAvatar)) return;
+        if (selectedAvatarObject == null) return;
         
-        float optionsX = buttonWidth + 10;
-        float optionsY = 35;
-        float optionsWidth = buttonWidth;
-        float optionsHeight = buttonHeight * 2 + 10;
+        float optionsX = avatarPanelWidth + panelMargin + optionsPopupOffset;
+        float optionsY = panelMargin + headerHeight + infoSpacing;
+        float optionsHeight = buttonHeight * 3 + optionsButtonSpacing * 4 + 10;
         
         // Background box
         GUI.Box(new Rect(optionsX, optionsY, optionsWidth, optionsHeight), "");
         
+        GUIStyle avatarButtonStyle = new GUIStyle(GUI.skin.button);
+        avatarButtonStyle.fontSize = buttonFontSize;
+        
         // Kill Avatar Button
-        if (GUI.Button(new Rect(optionsX + 5, optionsY + 5, optionsWidth - 10, buttonHeight), "Kill Avatar"))
+        if (GUI.Button(new Rect(optionsX + optionsButtonSpacing, optionsY + optionsButtonSpacing, 
+                               optionsWidth - optionsButtonSpacing * 2, buttonHeight), "Kill Avatar", avatarButtonStyle))
         {
-            KillAvatar(selectedAvatar);
+            KillAvatarObject(selectedAvatarObject);
             showAvatarOptions = false;
-            selectedAvatar = "";
+            selectedAvatarObject = null;
         }
         
-        // Reroll Avatar Button
-        if (GUI.Button(new Rect(optionsX + 5, optionsY + buttonHeight + 10, optionsWidth - 10, buttonHeight), "Reroll Avatar"))
+        // Reroll Avatar Button (only for valid avatars)
+        bool canReroll = !string.IsNullOrEmpty(selectedAvatarObject.Username);
+        GUI.enabled = canReroll;
+        
+        if (GUI.Button(new Rect(optionsX + optionsButtonSpacing, 
+                               optionsY + buttonHeight + optionsButtonSpacing * 2, 
+                               optionsWidth - optionsButtonSpacing * 2, buttonHeight), 
+                      canReroll ? "Reroll Avatar" : "Can't Reroll Buggy",avatarButtonStyle))
         {
-            RerollAvatar(selectedAvatar);
+            RerollAvatarObject(selectedAvatarObject);
             showAvatarOptions = false;
-            selectedAvatar = "";
+            selectedAvatarObject = null;
         }
+        GUI.enabled = true;
+        
+        // Force Destroy Button (for really stuck objects)
+        Color originalColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(1f, 0.3f, 0.3f); // Red background
+        if (GUI.Button(new Rect(optionsX + optionsButtonSpacing, 
+                               optionsY + (buttonHeight * 2) + optionsButtonSpacing * 3, 
+                               optionsWidth - optionsButtonSpacing * 2, buttonHeight), "Force Destroy", avatarButtonStyle))
+        {
+            ForceDestroyAvatar(selectedAvatarObject);
+            showAvatarOptions = false;
+            selectedAvatarObject = null;
+        }
+        GUI.backgroundColor = originalColor;
     }
     
-    private void KillAvatar(string username)
+    private void KillAvatarObject(ChatAvatar avatar)
     {
         if (avatarManager == null)
         {
@@ -211,21 +290,50 @@ public class DebugConsole : MonoBehaviour
             return;
         }
         
-        // Use the manager's RemoveAvatar method to properly despawn and return to pool
-        avatarManager.RemoveAvatar(username);
-        Debug.Log($"Killed avatar for {username}");
+        string avatarName = string.IsNullOrEmpty(avatar.Username) ? $"Buggy Avatar ID:{avatar.GetInstanceID()}" : avatar.Username;
+        
+        // Try to use the manager's RemoveAvatar method for valid avatars
+        if (!string.IsNullOrEmpty(avatar.Username))
+        {
+            avatarManager.RemoveAvatar(avatar.Username);
+        }
+        else
+        {
+            // For buggy avatars, try to destroy directly
+            Debug.LogWarning($"Attempting to destroy buggy avatar directly: {avatarName}");
+            if (avatar != null)
+            {
+                DestroyImmediate(avatar.gameObject);
+            }
+        }
+        
+        Debug.Log($"Killed avatar: {avatarName}");
     }
     
-    private void RerollAvatar(string username)
+    private void RerollAvatarObject(ChatAvatar avatar)
     {
-        if (avatarManager == null)
+        if (avatarManager == null || string.IsNullOrEmpty(avatar.Username))
         {
-            Debug.LogError("AvatarManager not found!");
+            Debug.LogError("Cannot reroll: AvatarManager not found or avatar has no username!");
             return;
         }
         
         // Use the existing RerollAvatar method from ChatAvatarManager
-        avatarManager.RerollAvatar(username);
-        Debug.Log($"Rerolled avatar for {username}");
+        avatarManager.RerollAvatar(avatar.Username);
+        Debug.Log($"Rerolled avatar for {avatar.Username}");
+    }
+    
+    private void ForceDestroyAvatar(ChatAvatar avatar)
+    {
+        string avatarName = string.IsNullOrEmpty(avatar.Username) ? $"Buggy Avatar ID:{avatar.GetInstanceID()}" : avatar.Username;
+        
+        Debug.LogWarning($"Force destroying avatar: {avatarName}");
+        
+        if (avatar != null && avatar.gameObject != null)
+        {
+            DestroyImmediate(avatar.gameObject);
+        }
+        
+        Debug.Log($"Force destroyed avatar: {avatarName}");
     }
 }
