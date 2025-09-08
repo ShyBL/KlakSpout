@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 227822876331511458}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 3.2944496, y: 0.5915413, z: 2.0925305}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -51,17 +51,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   messageData:
-    type: 0
-    username: 
-    message: 
+    type: 1
+    username: darthblechman
+    message: HolidaySanta
     customRewardId: 
     isSubscriber: 0
     isModerator: 0
     isVip: 0
     isBroadcaster: 0
     badges: []
-    hasEmotes: 0
-    emotes: []
+    hasEmotes: 1
+    emotes:
+    - emoteId: 1713822
+      emoteName: HolidaySanta
+      startIndex: 0
+      endIndex: 11
     hasBits: 0
     bitsAmount: 0
     noticeType: 0
@@ -264,7 +268,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: dogxwillxhuntx
+  m_text: darthblechman
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0dd75b71cf1c47b4b9533442e8207547, type: 2}
   m_sharedMaterial: {fileID: 840483747255007152, guid: 0dd75b71cf1c47b4b9533442e8207547, type: 2}
@@ -274,7 +278,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4292031546
-  m_fontColor: {r: 0.22802061, g: 0.20290874, b: 0.82558423, a: 1}
+  m_fontColor: {r: 0.98879045, g: 0.71910757, b: 0.11595533, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -351,9 +355,11 @@ LookAtConstraint:
   m_Roll: 0
   m_WorldUpObject: {fileID: 0}
   m_UseUpObject: 0
-  m_Active: 0
+  m_Active: 1
   m_IsLocked: 0
-  m_Sources: []
+  m_Sources:
+  - sourceTransform: {fileID: 0}
+    weight: 1
 --- !u!1001 &6888101545132837625
 PrefabInstance:
   m_ObjectHideFlags: 0
