@@ -158,17 +158,6 @@ public class AvatarPoolManager : MonoBehaviour
     
     private void ResetAvatarState(GameObject avatar)
     {
-        // Reset position and rotation
-        avatar.transform.localPosition = Vector3.zero;
-        avatar.transform.localRotation = Quaternion.identity;
-        
-        // Stop any walking behavior
-        WalkBehavior walkBehavior = avatar.GetComponent<WalkBehavior>();
-        if (walkBehavior != null)
-        {
-            walkBehavior.StopWalking();
-        }
-        
         // Reset ChatAvatar component if it exists
         ChatAvatar chatAvatar = avatar.GetComponent<ChatAvatar>();
         if (chatAvatar != null)

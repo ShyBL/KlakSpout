@@ -22,6 +22,7 @@ public class ChatAvatarManager : MonoBehaviour
     private Dictionary<string, ChatAvatar> activeAvatars = new Dictionary<string, ChatAvatar>();
     private TwitchChatClient chatClient;
     private AvatarPoolManager poolManager;
+    private AvatarFamily selectedFamily;
     
     void Start()
     {
@@ -172,7 +173,7 @@ public class ChatAvatarManager : MonoBehaviour
             avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
     
-        avatarScript.Initialize(username, message, walkBounds, cameraToLook);
+        avatarScript.Initialize(username, message, walkBounds, cameraToLook, selectedFamily);
     
         // Store reference
         activeAvatars[username] = avatarScript;
@@ -192,7 +193,8 @@ public class ChatAvatarManager : MonoBehaviour
         }
     
         // Select family based on weighted random
-        AvatarFamily selectedFamily = SelectWeightedFamily();
+        selectedFamily = SelectWeightedFamily();
+        
         if (selectedFamily == null || selectedFamily.variants.Count == 0)
         {
             Debug.LogWarning("Selected family has no variants!");
@@ -384,7 +386,8 @@ public class ChatAvatarManager : MonoBehaviour
             if (avatar != null)
             {
                 // Return to pool instead of destroying
-                poolManager.ReturnAvatar(avatar.gameObject);
+               poolManager.ReturnAvatar(avatar.gameObject);
+               //Destroy(avatar.gameObject);
             }
             
             activeAvatars.Remove(username);

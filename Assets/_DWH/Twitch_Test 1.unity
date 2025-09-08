@@ -240,6 +240,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a3211d5d50b401eb0b0099e4d8f9d49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  avatarManager: {fileID: 0}
+  maxAvatarButtons: 20
+  panelMargin: 10
+  panelSpacing: 10
+  avatarPanelWidth: 350
+  consoleHeightRatio: 0.33
+  buttonWidth: 300
+  buttonHeight: 50
+  buttonSpacing: 2
+  buttonFontSize: 25
+  headerHeight: 20
+  infoSpacing: 15
+  optionsWidth: 300
+  optionsButtonSpacing: 5
+  optionsPopupOffset: 10
+  logLineHeight: 20
+  logFontSize: 16
+  maxLogEntries: 1000
 --- !u!4 &228950804
 Transform:
   m_ObjectHideFlags: 0
@@ -627,7 +645,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fallbackPrefab: {fileID: 227822876331511458, guid: bd2013016fbc49846ab45fd5443e33e2, type: 3}
   avatarFamilies:
-  - familyName: 'Namazu '
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: 'Namazu '
     spawnChance: 25
     variants:
     - variantName: Normal
@@ -636,13 +655,15 @@ MonoBehaviour:
     - variantName: Fat
       prefab: {fileID: 227822876331511458, guid: 667bafa4114f6e04e9dcc35e392986d1, type: 3}
       variantChance: 30
-  - familyName: 'Dokujin '
+  - Scale: {x: 0.6, y: 0.6, z: 0.6}
+    familyName: 'Dokujin '
     spawnChance: 35
     variants:
     - variantName: Normal
       prefab: {fileID: 227822876331511458, guid: bd2013016fbc49846ab45fd5443e33e2, type: 3}
       variantChance: 100
-  - familyName: 'Gload '
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: 'Gload '
     spawnChance: 15
     variants:
     - variantName: Normal
@@ -651,7 +672,8 @@ MonoBehaviour:
     - variantName: Orange
       prefab: {fileID: 227822876331511458, guid: 5b53bd9381d4d1a47ba6cef995b2d1c5, type: 3}
       variantChance: 50
-  - familyName: Saugerling
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Saugerling
     spawnChance: 15
     variants:
     - variantName: Normal
@@ -714,7 +736,7 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_ShadowRenderingLayers: 1
   m_LightCookieSize: {x: 80, y: 80}
-  m_LightCookieOffset: {x: 0, y: 8.091942}
+  m_LightCookieOffset: {x: 0, y: 64.89348}
   m_SoftShadowQuality: 0
 --- !u!108 &1112060268
 Light:

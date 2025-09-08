@@ -4,6 +4,7 @@ using UnityEngine;
 [System.Serializable]
 public class AvatarFamily
 {
+    public Vector3 Scale;
     public string familyName;
     [Range(0f, 100f)]
     public float spawnChance;

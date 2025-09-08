@@ -27,19 +27,23 @@ public class ChatAvatar : MonoBehaviour
     [SerializeField] private bool isDetectingEmote;
     
     private TMP_Text nameTag;
+    private RectTransform nameTageRec;
+    
     private GameObject cameraToLook;
     private WalkBehavior walkBehavior;
     private Transform vipRockTarget;
+    private AvatarFamily avatarFamily;
     
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
     
-    public void Initialize(string user, ChatMessage message, Collider walkBounds, GameObject cameraToLook)
+    public void Initialize(string user, ChatMessage message, Collider walkBounds, GameObject cameraToLook, AvatarFamily family)
     {
         username = user;
         messageData = message;
         lastActivityTime = DateTime.Now;
         this.cameraToLook = cameraToLook;
+        avatarFamily = family;
         
         ApplyUniqueColor();
         
@@ -90,14 +94,6 @@ public class ChatAvatar : MonoBehaviour
         username = "";
         lastActivityTime = DateTime.MinValue;
         
-        // Destroy name tag if it exists
-        if (nameTagObject != null)
-        {
-            Destroy(nameTagObject);
-            nameTagObject = null;
-            nameTag = null;
-        }
-        
         // Reset walk behavior
         if (walkBehavior != null)
         {
@@ -105,7 +101,11 @@ public class ChatAvatar : MonoBehaviour
         }
         
         // Reset scale
-        transform.localScale = Vector3.one;
+        transform.localScale = avatarFamily.Scale;
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
+        
+        nameTag.transform.position = nameTagObject.transform.position;
     }
     
     public void MoveToEmote(FallingEmote emote)
@@ -215,6 +215,9 @@ public class ChatAvatar : MonoBehaviour
         newScale.z = Mathf.Min(newScale.z, maxScale);
         
         avatarTransform.localScale = newScale;
+        Vector3 nameTagOffset = new Vector3(0, newScale.y, 0);
+        nameTag.transform.position = avatarTransform.position + nameTagOffset;
+
 
         Debug.Log($"{username} ate emote: {emote.EmoteData.emoteName} with {chewCount} chews - New scale: {avatarTransform.localScale.x:F2}");
         
@@ -348,7 +351,7 @@ public class ChatAvatar : MonoBehaviour
         nameTag = nameTagObject.GetComponent<TextMeshPro>();
         nameTag.text = username;
         // Color will be set in ApplyAvatarEffects() based on user status
-        
+        nameTageRec = nameTag.gameObject.transform as RectTransform;
         // Make name tag always face camera
         if (cameraToLook != null)
         {
