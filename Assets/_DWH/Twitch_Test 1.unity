@@ -647,7 +647,7 @@ MonoBehaviour:
   avatarFamilies:
   - Scale: {x: 1, y: 1, z: 1}
     familyName: 'Namazu '
-    spawnChance: 25
+    spawnChance: 12.5
     variants:
     - variantName: Normal
       prefab: {fileID: 227822876331511458, guid: fd65b622914409f42bd4a018bdc5ba3b, type: 3}
@@ -657,14 +657,14 @@ MonoBehaviour:
       variantChance: 30
   - Scale: {x: 0.6, y: 0.6, z: 0.6}
     familyName: 'Dokujin '
-    spawnChance: 35
+    spawnChance: 17.5
     variants:
     - variantName: Normal
       prefab: {fileID: 227822876331511458, guid: bd2013016fbc49846ab45fd5443e33e2, type: 3}
       variantChance: 100
   - Scale: {x: 1, y: 1, z: 1}
     familyName: 'Gload '
-    spawnChance: 15
+    spawnChance: 7.5
     variants:
     - variantName: Normal
       prefab: {fileID: 227822876331511458, guid: 16f5ef9c960dfe646a5e0bd2e208b5d6, type: 3}
@@ -674,10 +674,52 @@ MonoBehaviour:
       variantChance: 50
   - Scale: {x: 1, y: 1, z: 1}
     familyName: Saugerling
-    spawnChance: 15
+    spawnChance: 7.5
     variants:
     - variantName: Normal
       prefab: {fileID: 227822876331511458, guid: 58e3fab0e14c736478f2f51342137d83, type: 3}
+      variantChance: 100
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Kobo
+    spawnChance: 17.5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 9077003595010811446, guid: 9d3f41f9567515c458118153e871ff1c, type: 3}
+      variantChance: 100
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Shinbo
+    spawnChance: 12.5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 586397400411032714, guid: 2a3d0693601a40c4b950b6603cc9b54c, type: 3}
+      variantChance: 100
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Baya
+    spawnChance: 7.5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 954555853570874447, guid: 173a77af9d2beb2479c4c0d4e21488bf, type: 3}
+      variantChance: 100
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Bug Fairy
+    spawnChance: 7.5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 8722711720476695408, guid: c01ed9ba37434d147ac1c4b4fb178224, type: 3}
+      variantChance: 100
+  - Scale: {x: 0.5, y: 0.5, z: 0.5}
+    familyName: Senrion
+    spawnChance: 5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 4615385497418398760, guid: 43f8e985679d36e4ea0a9cdfaf8725d2, type: 3}
+      variantChance: 100
+  - Scale: {x: 1, y: 1, z: 1}
+    familyName: Triglon
+    spawnChance: 5
+    variants:
+    - variantName: Normal
+      prefab: {fileID: 6602686625229593918, guid: d4f39caf382291c489850beecd9dc303, type: 3}
       variantChance: 100
   spawnBounds: {fileID: 1605502196}
   walkBounds: {fileID: 249768433}
@@ -736,7 +778,7 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_ShadowRenderingLayers: 1
   m_LightCookieSize: {x: 80, y: 80}
-  m_LightCookieOffset: {x: 0, y: 64.89348}
+  m_LightCookieOffset: {x: 0, y: 4.664406}
   m_SoftShadowQuality: 0
 --- !u!108 &1112060268
 Light:
