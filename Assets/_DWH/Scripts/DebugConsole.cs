@@ -51,7 +51,7 @@ public class DebugConsole : MonoBehaviour
         {
             avatarManager = FindObjectOfType<ChatAvatarManager>();
         }
-        logStyle.fontSize = logFontSize;
+       
     }
 
     private void OnEnable()
@@ -78,6 +78,7 @@ public class DebugConsole : MonoBehaviour
         {
             logStyle = new GUIStyle(GUI.skin.label)
             {
+                fontSize = logFontSize,
                 wordWrap = true // Helps with long log messages
             };
         }

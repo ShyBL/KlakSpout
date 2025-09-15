@@ -13,8 +13,6 @@ public class ChatAvatar : MonoBehaviour
     [SerializeField] private Renderer avatarRenderer;
     [SerializeField] public Transform avatarTransform;
     [SerializeField] private BlendShapeController avatarBlendShape;
-    [SerializeField] private float growFactor = 0.5f;
-    [SerializeField] private float maxScale = 3f;
     
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
@@ -27,7 +25,6 @@ public class ChatAvatar : MonoBehaviour
     [SerializeField] private bool isDetectingEmote;
     
     private TMP_Text nameTag;
-    private RectTransform nameTageRec;
     
     private GameObject cameraToLook;
     private WalkBehavior walkBehavior;
@@ -99,13 +96,6 @@ public class ChatAvatar : MonoBehaviour
         {
             walkBehavior.StopWalking();
         }
-        
-        // Reset scale
-        transform.localScale = avatarFamily.Scale;
-        transform.localPosition = Vector3.zero;
-        transform.localRotation = Quaternion.identity;
-        
-        nameTag.transform.position = nameTagObject.transform.position;
     }
     
     public void MoveToEmote(FallingEmote emote)
@@ -205,20 +195,6 @@ public class ChatAvatar : MonoBehaviour
         // Start eating animation
         yield return StartCoroutine(avatarBlendShape.EatAnimation(chewCount, chewSpeed));
         
-        // Grow avatar slightly after eating, but clamp to maximum size
-        Vector3 currentScale = avatarTransform.localScale;
-        Vector3 newScale = currentScale + Vector3.one * growFactor;
-        
-        // Clamp each axis to the maximum scale
-        newScale.x = Mathf.Min(newScale.x, maxScale);
-        newScale.y = Mathf.Min(newScale.y, maxScale);
-        newScale.z = Mathf.Min(newScale.z, maxScale);
-        
-        avatarTransform.localScale = newScale;
-        Vector3 nameTagOffset = new Vector3(0, newScale.y, 0);
-        nameTag.transform.position = avatarTransform.position + nameTagOffset;
-
-
         Debug.Log($"{username} ate emote: {emote.EmoteData.emoteName} with {chewCount} chews - New scale: {avatarTransform.localScale.x:F2}");
         
         // Update activity time and cleanup
@@ -351,7 +327,6 @@ public class ChatAvatar : MonoBehaviour
         nameTag = nameTagObject.GetComponent<TextMeshPro>();
         nameTag.text = username;
         // Color will be set in ApplyAvatarEffects() based on user status
-        nameTageRec = nameTag.gameObject.transform as RectTransform;
         // Make name tag always face camera
         if (cameraToLook != null)
         {
