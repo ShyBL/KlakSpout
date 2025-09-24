@@ -7,6 +7,9 @@ public struct ChatMessage
     public string username;
     public string message;
     public DateTime timestamp;
+    
+    // Channel Points Redeem Info
+    public string customRewardId;
         
     // Badge info
     public bool isSubscriber;

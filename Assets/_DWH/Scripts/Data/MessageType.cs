@@ -4,5 +4,6 @@
     EmoteOnly,
     BitsCheer,
     UserNotice,
-    System
+    System,
+    ChannelPointRedemption
 }

@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Pool;
+using UnityEngine.Networking;
 
 public class EmoteManager : MonoBehaviour
 {
@@ -8,6 +11,11 @@ public class EmoteManager : MonoBehaviour
     [SerializeField] private GameObject emotePrefab;
     [SerializeField] private Collider spawnBounds;
     [SerializeField] private Transform emoteParent;
+    [SerializeField] private int maxEmotesPerMessage = 10;
+    [SerializeField] private int maxTotalEmotes = 50;
+
+    [Header("Fallback Emotes")]
+    [SerializeField] private Sprite[] fallbackEmoteSprites;
     
     [Header("Pool Settings")]
     [SerializeField] private int defaultCapacity = 20;
@@ -134,10 +142,22 @@ public class EmoteManager : MonoBehaviour
     private void SpawnEmotesFromMessage(ChatMessage message)
     {
         EmoteData[] emoteDataArray = EmoteData.FromEmoteInfoArray(message.emotes);
+        var uniqueEmotes = EmoteData.FromEmoteInfoArray(message.emotes)
+            .Where(e => !string.IsNullOrEmpty(e.emoteId))
+            .GroupBy(e => e.emoteId)
+            .Select(g => g.First())
+            .Take(maxEmotesPerMessage);
         
-        foreach (EmoteData emoteData in emoteDataArray)
+        int spawnedCount = 0;
+        foreach (EmoteData emoteData in uniqueEmotes)
         {
+            if (maxTotalEmotes > 0 && GetActiveEmoteCount() >= maxTotalEmotes)
+            {
+                Debug.Log($"Reached maximum total emotes ({maxTotalEmotes}), skipping spawn");
+                break;
+            }
             SpawnEmote(emoteData);
+            spawnedCount++;
         }
         
         Debug.Log($"Spawned {emoteDataArray.Length} emotes from {message.username}");
@@ -150,22 +170,29 @@ public class EmoteManager : MonoBehaviour
             Debug.LogError("Spawn bounds not set!");
             return;
         }
-        
+    
         GameObject emoteObj = emotePool.Get();
         if (emoteObj == null) return;
-        
+    
         // Get random spawn position within bounds
         Vector3 spawnPosition = GetRandomSpawnPosition();
-        
+    
         // Initialize the falling emote
         FallingEmote fallingEmote = emoteObj.GetComponent<FallingEmote>();
         if (fallingEmote != null)
         {
+            // Set fallback sprite directly instead of loading from web
+            SpriteRenderer spriteRenderer = emoteObj.GetComponentInChildren<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                SetFallbackSprite(spriteRenderer);
+            }
+        
             fallingEmote.Initialize(emoteData, spawnPosition, cameraToLook.transform);
-            
+        
             // Set parent for organization
             emoteObj.transform.SetParent(transform);
-            
+        
             // Schedule cleanup
             StartCoroutine(CleanupEmoteAfterTime(emoteObj, emoteLifetime));
         }
@@ -258,6 +285,7 @@ public class EmoteManager : MonoBehaviour
             if (fallingEmote != null && !fallingEmote.IsBeingCollected)
             {
                 Debug.Log($"Cleaning up uncollected emote: {fallingEmote.EmoteData.emoteName}");
+                fallingEmote.ResetEmote();
                 ReturnEmoteToPool(emoteObj);
             }
         }
@@ -271,6 +299,114 @@ public class EmoteManager : MonoBehaviour
     public int GetLandedEmoteCount()
     {
         return landedEmotes.Count;
+    }
+    
+    // private Coroutine imageLoadCoroutine;
+    //
+    // public void LoadEmoteImage(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    // {
+    //     if (imageLoadCoroutine != null)
+    //     {
+    //         StopCoroutine(imageLoadCoroutine);
+    //     }
+    //     
+    //     imageLoadCoroutine = StartCoroutine(LoadEmoteImageCoroutine(imageUrl, emoteName, spriteRenderer));
+    // }
+    //
+    // public void ClearSprite(SpriteRenderer spriteRenderer)
+    // {
+    //     if (imageLoadCoroutine != null)
+    //     {
+    //         StopCoroutine(imageLoadCoroutine);
+    //         imageLoadCoroutine = null;
+    //     }
+    //     
+    //     if (spriteRenderer != null)
+    //     {
+    //         spriteRenderer.sprite = null;
+    //     }
+    // }
+    //
+    // private IEnumerator LoadEmoteImageCoroutine(string imageUrl, string emoteName, SpriteRenderer spriteRenderer)
+    // {
+    //     using (UnityWebRequest www = UnityWebRequestTexture.GetTexture(imageUrl))
+    //     {
+    //         yield return www.SendWebRequest();
+    //         
+    //         if (www.result == UnityWebRequest.Result.Success)
+    //         {
+    //             Texture2D texture = DownloadHandlerTexture.GetContent(www);
+    //             
+    //             if (texture != null && spriteRenderer != null)
+    //             {
+    //                 // Create sprite from texture
+    //                 Sprite emoteSprite = Sprite.Create(
+    //                     texture,
+    //                     new Rect(0, 0, texture.width, texture.height),
+    //                     new Vector2(0.5f, 0.5f), // Pivot at center
+    //                     100f // Pixels per unit
+    //                 );
+    //                 
+    //                 spriteRenderer.sprite = emoteSprite;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             Debug.LogWarning($"Failed to load emote image: {emoteName} - {www.error}");
+    //             
+    //             // Use fallback sprite instead of creating a colored square
+    //             SetFallbackSprite(spriteRenderer);
+    //         }
+    //     }
+    //     
+    //     imageLoadCoroutine = null;
+    // }
+    
+    private void SetFallbackSprite(SpriteRenderer spriteRenderer)
+    {
+        if (spriteRenderer == null) return;
+    
+        // Always use random sprite from fallback list
+        if (fallbackEmoteSprites != null && fallbackEmoteSprites.Length > 0)
+        {
+            int randomIndex = Random.Range(0, fallbackEmoteSprites.Length);
+            spriteRenderer.sprite = fallbackEmoteSprites[randomIndex];
+            Debug.Log($"Using fallback emote sprite: {fallbackEmoteSprites[randomIndex].name}");
+        }
+        else
+        {
+            Debug.LogWarning("No fallback emote sprites assigned! Please assign fallback sprites in the inspector.");
+            // Keep the old fallback as a last resort
+            CreateFallbackSprite(spriteRenderer);
+        }
+    }
+    
+    private void CreateFallbackSprite(SpriteRenderer spriteRenderer)
+    {
+        if (spriteRenderer == null) return;
+        
+        // Create a simple colored square as last resort fallback
+        Texture2D fallbackTexture = new Texture2D(64, 64);
+        Color fallbackColor = Random.ColorHSV(0f, 1f, 0.7f, 1f, 0.8f, 1f);
+        
+        for (int x = 0; x < 64; x++)
+        {
+            for (int y = 0; y < 64; y++)
+            {
+                fallbackTexture.SetPixel(x, y, fallbackColor);
+            }
+        }
+        
+        fallbackTexture.Apply();
+        
+        Sprite fallbackSprite = Sprite.Create(
+            fallbackTexture,
+            new Rect(0, 0, 64, 64),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        
+        spriteRenderer.sprite = fallbackSprite;
     }
     
     private void OnDrawGizmosSelected()

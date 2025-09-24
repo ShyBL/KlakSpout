@@ -1,5 +1,5 @@
-﻿using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
+using System.Collections.Generic; // Required for using a Queue
 
 public class WalkBehavior : MonoBehaviour
 {
@@ -8,72 +8,164 @@ public class WalkBehavior : MonoBehaviour
     [SerializeField] private float pauseMinTime = 0.5f;
     [SerializeField] private float pauseMaxTime = 2f;
     [SerializeField] private float targetReachDistance = 0.5f;
-    
+
     [Header("Animation Settings")]
     [SerializeField] private Animator animator;
-    [SerializeField] private float animationSmoothing = 0.1f;
-    
+    [SerializeField] private float animationTransitionSpeed = 5f;
+
+    // --- System State ---
     private Collider walkBounds;
-    private Vector3 targetPosition;
-    private bool isWalking = true;
-    public bool isDetectingEmote = false;
-    private Coroutine walkCoroutine;
-    
-    // Animation components
-    private float currentSpeed = 0f;
-    private Vector3 lastPosition;
-    
-    // Animation parameter names (make sure these match your Animator Controller)
-    private const string SPEED_PARAM = "Speed";
-    private const string IS_WALKING_PARAM = "IsWalking";
-    
+    private Vector3 currentTargetPosition;
+    private bool isWalkingEnabled = true;
+    private bool isCurrentlyMoving = false;
+    private float pauseTimer = 0f;
+    private bool isPaused = false;
+
+    // --- Queue System ---
+    private Queue<Vector3> targetQueue = new Queue<Vector3>();
+
+    // --- Animation ---
+    private const string IS_WALKING_PARAM = "isWalking";
+
     private void Awake()
     {
         if (animator == null)
         {
-            Debug.LogWarning($"No Animator found on {gameObject.name}. Animation will not work.");
+            animator = GetComponent<Animator>();
         }
-        
-        lastPosition = transform.position;
     }
-    
 
-    
-    public void Initialize(Collider bounds, float speed = 2f)
+    /// <summary>
+    /// Sets the bounds for walking and enqueues the first random target.
+    /// </summary>
+    public void Initialize(Collider bounds)
     {
         walkBounds = bounds;
-        walkSpeed = speed;
-        
-        // Set initial position within bounds
-        SetRandomPositionInBounds();
-        
-        // Start walking behavior
+        transform.position = GetRandomPointInBounds(); // Set initial position
+        EnqueueRandomTarget(); // Add the first target to the queue
         StartWalking();
+    }
+
+    private void Update()
+    {
+        if (!isWalkingEnabled || walkBounds == null) return;
+
+        // 1. Handle the pause state after reaching a target
+        if (isPaused)
+        {
+            pauseTimer -= Time.deltaTime;
+            if (pauseTimer <= 0f)
+            {
+                isPaused = false;
+                // Pause is over, get the next target from the queue
+                PrepareAndSetNextTarget();
+            }
+            return; // Don't do anything else while paused
+        }
+
+        if (!isCurrentlyMoving) return; // If we aren't moving, exit
+
+        // 2. Handle the movement logic (your original code)
+        float distanceToTarget = Vector3.Distance(transform.position, currentTargetPosition);
+
+        if (distanceToTarget > targetReachDistance)
+        {
+            // Move towards target
+            Vector3 direction = (currentTargetPosition - transform.position).normalized;
+            transform.position = walkBounds.ClosestPoint(transform.position + direction * (walkSpeed * Time.deltaTime));
+
+            // Rotate to face movement direction
+            if (direction != Vector3.zero)
+            {
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), animationTransitionSpeed * Time.deltaTime);
+            }
+        }
+        else
+        {
+            // 3. Reached destination: stop moving and start the pause
+            isCurrentlyMoving = false;
+            UpdateAnimation(false);
+
+            // Check if this was a VIP rock destination
+            ChatAvatar avatar = GetComponent<ChatAvatar>();
+            if (avatar != null && avatar.CheckIfReachedVipRock(currentTargetPosition))
+            {
+                // Don't start normal pause - avatar will handle VIP rock logic
+                return;
+            }
+
+            isPaused = true;
+            pauseTimer = Random.Range(pauseMinTime, pauseMaxTime);
+        }
+    }
+
+    // --- Public Control Methods ---
+
+    /// <summary>
+    /// PUBLIC: Adds a specific destination to the end of the queue.
+    /// Call this from other scripts to give the character a new task without interrupting it.
+    /// </summary>
+    public void EnqueueTarget(Vector3 newTargetPosition)
+    {
+        // We clamp the position to the bounds to ensure it's a valid location
+        targetQueue.Enqueue(walkBounds.ClosestPoint(newTargetPosition));
     }
     
     public void StartWalking()
     {
-        if (walkCoroutine == null && walkBounds != null)
+        isWalkingEnabled = true;
+        if (!isCurrentlyMoving && !isPaused)
         {
-            isWalking = true;
-            walkCoroutine = StartCoroutine(WalkBehaviorCoroutine());
+            PrepareAndSetNextTarget();
         }
     }
-    
+
+    /// <summary>
+    /// Completely stops walking and clears all pending targets
+    /// </summary>
     public void StopWalking()
     {
-        isWalking = false;
-        if (walkCoroutine != null)
+        isWalkingEnabled = false;
+        isCurrentlyMoving = false;
+        isPaused = false;
+        targetQueue.Clear(); // Empty the queue of any pending tasks
+        UpdateAnimation(false);
+    }
+
+    /// <summary>
+    /// Temporarily pauses walking without clearing the queue (used for eating, etc.)
+    /// </summary>
+    /// <param name="duration">How long to pause in seconds</param>
+    public void PauseForDuration(float duration)
+    {
+        isCurrentlyMoving = false;
+        UpdateAnimation(false);
+        isPaused = true;
+        pauseTimer = duration;
+        // Note: We don't disable isWalkingEnabled or clear the queue
+    }
+
+    /// <summary>
+    /// Pauses walking while preserving the queue (can be resumed)
+    /// </summary>
+    public void PauseWalking()
+    {
+        isWalkingEnabled = false;
+        isCurrentlyMoving = false;
+        isPaused = false;
+        // Note: We don't clear the queue here
+        UpdateAnimation(false);
+    }
+
+    /// <summary>
+    /// Resumes walking from where it left off
+    /// </summary>
+    public void ResumeWalking()
+    {
+        isWalkingEnabled = true;
+        if (!isPaused)
         {
-            StopCoroutine(walkCoroutine);
-            walkCoroutine = null;
-        }
-        
-        // Ensure animation goes to idle
-        if (animator != null)
-        {
-            animator.SetFloat(SPEED_PARAM, 0f);
-            animator.SetBool(IS_WALKING_PARAM, false);
+            PrepareAndSetNextTarget();
         }
     }
     
@@ -81,111 +173,65 @@ public class WalkBehavior : MonoBehaviour
     {
         walkSpeed = speed;
     }
-    
-    private void SetRandomPositionInBounds()
+
+    // --- Core Queue Logic ---
+
+    /// <summary>
+    /// Prepares the system for the next target by managing the queue.
+    /// </summary>
+    private void PrepareAndSetNextTarget()
     {
-        if (walkBounds == null) return;
-        
-        Vector3 randomPoint = GetRandomPointInBounds();
-        transform.position = randomPoint;
-        lastPosition = transform.position;
-        SetNewTarget();
+        // If the queue is empty, add a new random wander target.
+        // This creates the continuous wandering behavior.
+        if (targetQueue.Count == 0)
+        {
+            EnqueueRandomTarget();
+        }
+
+        // Dequeue the next target and begin moving towards it.
+        if (targetQueue.Count > 0)
+        {
+            currentTargetPosition = targetQueue.Dequeue();
+            isCurrentlyMoving = true;
+            UpdateAnimation(true);
+        }
+    }
+
+    /// <summary>
+    /// Adds a random point within the bounds to the queue.
+    /// </summary>
+    private void EnqueueRandomTarget()
+    {
+        if (walkBounds != null)
+        {
+            targetQueue.Enqueue(GetRandomPointInBounds());
+        }
     }
     
+    // --- Your Original Helper and Debug Methods (Unchanged) ---
+    
+    private void UpdateAnimation(bool walking)
+    {
+        if (animator != null)
+        {
+            animator.SetBool(IS_WALKING_PARAM, walking);
+        }
+    }
+
     private Vector3 GetRandomPointInBounds()
     {
         if (walkBounds == null) return transform.position;
-        
+
         Bounds bounds = walkBounds.bounds;
-        
-        // Generate random point within bounds
         Vector3 randomPoint = new Vector3(
             Random.Range(bounds.min.x, bounds.max.x),
-            bounds.center.y, // Keep Y at bounds center
+            bounds.center.y, // Keep Y at bounds center for simplicity
             Random.Range(bounds.min.z, bounds.max.z)
         );
-        
-        // Ensure the point is actually inside the collider
-        Vector3 closestPoint = walkBounds.ClosestPoint(randomPoint);
-        
-        // If the closest point is significantly different, use it instead
-        if (Vector3.Distance(randomPoint, closestPoint) > 0.1f)
-        {
-            randomPoint = closestPoint;
-        }
-        
-        return randomPoint;
+
+        return walkBounds.ClosestPoint(randomPoint);
     }
 
-    public void SetNewTarget(Transform target = null)
-    {
-        targetPosition = target == null ? GetRandomPointInBounds() : target.transform.position;
-    }
-    
-    private IEnumerator WalkBehaviorCoroutine()
-    {
-        while (isWalking && walkBounds != null)
-        {
-            // Move towards target
-            while (Vector3.Distance(transform.position, targetPosition) > targetReachDistance)
-            {
-                if (!isWalking) yield break;
-                
-                Vector3 direction = (targetPosition - transform.position).normalized;
-                Vector3 newPosition = transform.position + direction * walkSpeed * Time.deltaTime;
-                
-                // Ensure we stay within bounds
-                Vector3 clampedPosition = walkBounds.ClosestPoint(newPosition);
-                transform.position = clampedPosition;
-                
-                // Rotate to face movement direction
-                if (direction != Vector3.zero)
-                {
-                    transform.rotation = Quaternion.LookRotation(direction);
-                }
-                
-                // Update animation parameters while moving
-                if (animator != null)
-                {
-                    // Calculate actual movement speed
-                    float actualSpeed = Vector3.Distance(transform.position, lastPosition) / Time.deltaTime;
-                    lastPosition = transform.position;
-                    
-                    // Smooth the speed value for better animation blending
-                    currentSpeed = Mathf.Lerp(currentSpeed, actualSpeed, animationSmoothing);
-                    
-                    // Normalize speed (0 = idle, 1 = full walk speed)
-                    float normalizedSpeed = Mathf.Clamp01(currentSpeed / walkSpeed);
-                    
-                    // Update animator parameters
-                    animator.SetFloat(SPEED_PARAM, normalizedSpeed);
-                    animator.SetBool(IS_WALKING_PARAM, true);
-                }
-                
-                yield return null;
-            }
-            
-            // Set animation to idle during pause
-            if (animator != null)
-            {
-                animator.SetFloat(SPEED_PARAM, 0f);
-                animator.SetBool(IS_WALKING_PARAM, false);
-            }
-            
-            // Brief pause at destination
-            float pauseTime = Random.Range(pauseMinTime, pauseMaxTime);
-            yield return new WaitForSeconds(pauseTime);
-            
-            // Set new target
-            SetNewTarget();
-        }
-    }
-    
-    private void OnDestroy()
-    {
-        StopWalking();
-    }
-    
     private void OnDrawGizmosSelected()
     {
         if (walkBounds != null)
@@ -193,9 +239,13 @@ public class WalkBehavior : MonoBehaviour
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireCube(walkBounds.bounds.center, walkBounds.bounds.size);
         }
-        
-        // Draw target position
+
+        // Draw the current target position
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(targetPosition, 0.5f);
+        Gizmos.DrawWireSphere(currentTargetPosition, 0.5f);
+
+        // Draw a sphere over the character showing its state
+        Gizmos.color = isCurrentlyMoving ? Color.green : Color.blue;
+        Gizmos.DrawWireSphere(transform.position, 0.3f);
     }
 }

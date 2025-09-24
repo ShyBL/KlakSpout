@@ -1,17 +1,20 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class ChatAvatarManager : MonoBehaviour
 {
+    [Header("Avatar Prefabs")]
+    [SerializeField] private GameObject fallbackPrefab; 
+    [SerializeField] private List<AvatarFamily> avatarFamilies = new List<AvatarFamily>();
+    
     [Header("Bounds Settings")]
     [SerializeField] private Collider spawnBounds;
     [SerializeField] private Collider walkBounds;
     
     [Header("Avatar Settings")]
     [SerializeField] private GameObject cameraToLook;
-    [SerializeField] private float walkSpeed = 2f;
-    [SerializeField] private float nameTagHeight = 2f;
     
     [Header("Despawn Management")]
     [SerializeField] private float despawnCheckInterval = 30f; // Check every 30 seconds
@@ -19,6 +22,7 @@ public class ChatAvatarManager : MonoBehaviour
     private Dictionary<string, ChatAvatar> activeAvatars = new Dictionary<string, ChatAvatar>();
     private TwitchChatClient chatClient;
     private AvatarPoolManager poolManager;
+    private AvatarFamily selectedFamily;
     
     void Start()
     {
@@ -139,35 +143,186 @@ public class ChatAvatarManager : MonoBehaviour
             Debug.LogError("Spawn bounds or walk bounds not set!");
             return;
         }
-        
-        // Get avatar from pool
-        GameObject avatarObj = poolManager.GetAvatar();
-        if (avatarObj == null)
+    
+        // Get the appropriate prefab for this user
+        GameObject prefabToUse = GetAvatarPrefab(message);
+        if (prefabToUse == null)
         {
-            Debug.LogWarning("Could not get avatar from pool!");
+            Debug.LogWarning($"No prefab available for user {username}");
             return;
         }
-        
+    
+        // Get avatar from pool using the selected prefab
+        GameObject avatarObj = poolManager.GetAvatar(prefabToUse);
+        if (avatarObj == null)
+        {
+            Debug.LogWarning($"Could not get avatar from pool for prefab: {prefabToUse.name}");
+            return;
+        }
+    
         // Position avatar within spawn bounds
         Vector3 spawnPosition = GetRandomPointInBounds(spawnBounds);
         avatarObj.transform.position = spawnPosition;
         avatarObj.transform.SetParent(transform);
-        avatarObj.name = $"Avatar_{username}";
-        
+        avatarObj.name = $"Avatar_{username}_{prefabToUse.name}";
+    
         // Initialize avatar component
         ChatAvatar avatarScript = avatarObj.GetComponent<ChatAvatar>();
         if (avatarScript == null)
         {
             avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
-        
-        avatarScript.Initialize(username, message, walkBounds, walkSpeed, nameTagHeight, cameraToLook);
-        
+    
+        avatarScript.Initialize(username, message, walkBounds, cameraToLook, selectedFamily);
+    
         // Store reference
         activeAvatars[username] = avatarScript;
-        
-        Debug.Log($"Spawned avatar for {username} at {spawnPosition}. Active avatars: {activeAvatars.Count}");
+    
+        Debug.Log($"Spawned {prefabToUse.name} avatar for {username} at {spawnPosition}. Active avatars: {activeAvatars.Count}");
     }
+    
+    private GameObject GetAvatarPrefab(ChatMessage message)
+    {
+        string username = message.username.ToLower();
+        
+        // Check if we have any families available
+        if (avatarFamilies.Count == 0)
+        {
+            Debug.LogWarning("No avatar families assigned!");
+            return fallbackPrefab; // Fallback
+        }
+    
+        // Select family based on weighted random
+        selectedFamily = SelectWeightedFamily();
+        
+        if (selectedFamily == null || selectedFamily.variants.Count == 0)
+        {
+            Debug.LogWarning("Selected family has no variants!");
+            return fallbackPrefab; // Fallback
+        }
+    
+        // Select variant within the family
+        AvatarVariant selectedVariant = SelectWeightedVariant(selectedFamily);
+        
+        return selectedVariant?.prefab ?? fallbackPrefab; // Fallback if null
+    }
+    
+    private AvatarFamily SelectWeightedFamily()
+    {
+        float totalWeight = 0f;
+        foreach (var family in avatarFamilies)
+        {
+            totalWeight += family.spawnChance;
+        }
+    
+        if (totalWeight <= 0f) return null;
+    
+        float randomValue = Random.Range(0f, totalWeight);
+        float currentWeight = 0f;
+    
+        foreach (var family in avatarFamilies)
+        {
+            currentWeight += family.spawnChance;
+            if (randomValue <= currentWeight)
+            {
+                return family;
+            }
+        }
+    
+        return avatarFamilies[avatarFamilies.Count - 1]; // Fallback to last family
+    }
+    
+    private AvatarVariant SelectWeightedVariant(AvatarFamily family)
+    {
+        float totalWeight = 0f;
+        foreach (var variant in family.variants)
+        {
+            totalWeight += variant.variantChance;
+        }
+    
+        if (totalWeight <= 0f) return family.variants[0]; // Return first variant as fallback
+    
+        float randomValue = Random.Range(0f, totalWeight);
+        float currentWeight = 0f;
+    
+        foreach (var variant in family.variants)
+        {
+            currentWeight += variant.variantChance;
+            if (randomValue <= currentWeight)
+            {
+                return variant;
+            }
+        }
+    
+        return family.variants[family.variants.Count - 1]; // Fallback to last variant
+    }
+    
+    // private GameObject GetAvatarPrefab(ChatMessage message)
+    // {
+    //     string username = message.username.ToLower();
+    //
+    //     // Special case for broadcaster
+    //     if (username == chatClient.channel)
+    //     {
+    //         return broadcasterPrefab != null ? broadcasterPrefab : 
+    //             (avatarPrefabs.Count > 0 ? avatarPrefabs[0] : null);
+    //     }
+    //
+    //     // Check if we have any prefabs available
+    //     if (avatarPrefabs.Count == 0)
+    //     {
+    //         Debug.LogWarning("No avatar prefabs assigned!");
+    //         return null;
+    //     }
+    //
+    //     // Use username hash as seed for consistent results per user
+    //     Random.State originalState = Random.state;
+    //     Random.InitState(username.GetHashCode());
+    //
+    //     // Select random prefab from the list
+    //     GameObject selectedPrefab = avatarPrefabs[Random.Range(0, avatarPrefabs.Count)];
+    //
+    //     Random.state = originalState;
+    //     return selectedPrefab;
+    // }
+    
+    // private GameObject GetAvatarPrefab(ChatMessage message)
+    // {
+    //     string username = message.username.ToLower();
+    //
+    //     // Special case for broadcaster
+    //     if (username == chatClient.channel)
+    //     {
+    //         return broadcasterPrefab != null ? broadcasterPrefab : namazuPrefab;
+    //     }
+    //     
+    //     if (username == "darthblechman")
+    //     {
+    //         return namazuPrefab != null ? namazuPrefab : fatNamazuPrefab;
+    //     }
+    //
+    //     // Use username hash as seed for consistent results per user
+    //     Random.State originalState = Random.state;
+    //     Random.InitState(username.GetHashCode());
+    //
+    //     GameObject selectedPrefab;
+    //
+    //     // 40% chance for namazu family, 60% chance for dokujin
+    //     if (Random.Range(0f, 1f) < 0.4f)
+    //     {
+    //         // User gets a namazu - now decide which type
+    //         // 30% fat namazu, 70% normal namazu
+    //         selectedPrefab = Random.Range(0f, 1f) < 0.3f ? fatNamazuPrefab : namazuPrefab;
+    //     }
+    //     else
+    //     {
+    //         // User gets dokujin
+    //         selectedPrefab = dokujinPrefab;
+    //     }
+    //
+    //     Random.state = originalState;
+    //     return selectedPrefab;
+    // }
     
     private Vector3 GetRandomPointInBounds(Collider bounds)
     {
@@ -231,11 +386,17 @@ public class ChatAvatarManager : MonoBehaviour
             if (avatar != null)
             {
                 // Return to pool instead of destroying
-                poolManager.ReturnAvatar(avatar.gameObject);
+               poolManager.ReturnAvatar(avatar.gameObject);
+               //Destroy(avatar.gameObject);
             }
             
             activeAvatars.Remove(username);
         }
+    }
+    
+    public ChatAvatar[] GetActiveAvatars()
+    {
+        return activeAvatars.Values.ToArray();
     }
     
     public void ClearAllAvatars()
@@ -267,6 +428,25 @@ public class ChatAvatarManager : MonoBehaviour
         {
             Gizmos.color = Color.blue;
             Gizmos.DrawWireCube(walkBounds.bounds.center, walkBounds.bounds.size);
+        }
+    }
+
+    /// <summary>
+    /// Despawns a user's current avatar and spawns a new one, effectively "rerolling" it.
+    /// </summary>
+    /// <param name="username">The user to reroll.</param>
+    public void RerollAvatar(string username)
+    {
+        string lowerUsername = username.ToLower();
+        if (activeAvatars.TryGetValue(lowerUsername, out ChatAvatar avatar))
+        {
+            // To respawn, we need the original message.
+            // This assumes you store the initial message on the ChatAvatar script as suggested.
+            ChatMessage initialMessage = avatar.GetComponent<ChatAvatar>().messageData;
+
+            Debug.Log($"Rerolling avatar for {username}...");
+            RemoveAvatar(lowerUsername);
+            SpawnAvatar(lowerUsername, initialMessage);
         }
     }
 }

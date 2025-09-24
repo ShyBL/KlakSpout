@@ -2,36 +2,72 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
+using System.Collections;
 using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
 {
+    public ChatMessage messageData;
+    
+    [Header("Visuals")]
+    [SerializeField] private Renderer avatarRenderer;
+    [SerializeField] public Transform avatarTransform;
+    [SerializeField] private BlendShapeController avatarBlendShape;
+    
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 10f;
     [SerializeField] private GameObject nameTagObject;
+    
     private string username;
-    private ChatMessage messageData;
     private DateTime lastActivityTime;
+    private FallingEmote detectedEmote;
+
+    [SerializeField] private bool isDetectingEmote;
     
     private TMP_Text nameTag;
+    
     private GameObject cameraToLook;
     private WalkBehavior walkBehavior;
+    private Transform vipRockTarget;
+    private AvatarFamily avatarFamily;
     
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
     
-    public void Initialize(string user, ChatMessage message, Collider walkBounds, float walkSpeed, float nameHeight, GameObject cameraToLook)
+    public void Initialize(string user, ChatMessage message, Collider walkBounds, GameObject cameraToLook, AvatarFamily family)
     {
         username = user;
         messageData = message;
         lastActivityTime = DateTime.Now;
         this.cameraToLook = cameraToLook;
+        avatarFamily = family;
         
-        CreateNameTag(nameHeight);
+        ApplyUniqueColor();
+        
+        CreateNameTag();
         ApplyAvatarEffects();
-        SetupWalkBehavior(walkBounds, walkSpeed);
+        
+        SetupWalkBehavior(walkBounds);
     }
-    
+
+    private void ApplyUniqueColor()
+    {
+        if (avatarRenderer == null)
+        {
+            Debug.LogWarning("Avatar Renderer is not assigned!", this);
+            return;
+        }
+        
+        MaterialPropertyBlock propBlock = new MaterialPropertyBlock();
+        avatarRenderer.GetPropertyBlock(propBlock);
+        
+        Random.InitState(username.GetHashCode());
+        Color randomColor = Random.ColorHSV(0f, 1f, 0.15f, 0.30f, 0.9f, 1f);
+        
+        propBlock.SetColor("_BaseColor", randomColor);
+        avatarRenderer.SetPropertyBlock(propBlock);
+    }
+
     public void UpdateActivity(ChatMessage newMessage)
     {
         messageData = newMessage;
@@ -55,22 +91,11 @@ public class ChatAvatar : MonoBehaviour
         username = "";
         lastActivityTime = DateTime.MinValue;
         
-        // Destroy name tag if it exists
-        if (nameTagObject != null)
-        {
-            Destroy(nameTagObject);
-            nameTagObject = null;
-            nameTag = null;
-        }
-        
         // Reset walk behavior
         if (walkBehavior != null)
         {
             walkBehavior.StopWalking();
         }
-        
-        // Reset scale
-        transform.localScale = Vector3.one;
     }
     
     public void MoveToEmote(FallingEmote emote)
@@ -78,28 +103,109 @@ public class ChatAvatar : MonoBehaviour
         if (walkBehavior != null)
         {
             // Set destination to emote position
-            //walkBehavior.isDetectingEmote = true;
-            walkBehavior.SetNewTarget(emote.transform);
+            isDetectingEmote = true;
+            detectedEmote = emote;
+            walkBehavior.EnqueueTarget(emote.transform.position);
             Debug.Log($"{username} moving to collect emote: {emote.EmoteData.emoteName}");
         }
     }
-    
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (isDetectingEmote && other.TryGetComponent(out FallingEmote emote))
+        {
+            if (emote == detectedEmote)
+            {
+                CollectEmote(detectedEmote);
+            }
+        }
+    }
+
     public void CollectEmote(FallingEmote emote)
     {
-        // Grow avatar slightly
-        Vector3 currentScale = transform.localScale;
-        transform.localScale = currentScale + Vector3.one * 0.05f;
-        
-        Debug.Log($"{username} collected emote: {emote.EmoteData.emoteName} - New scale: {transform.localScale.x:F2}");
-        
-        // Update activity time
-        lastActivityTime = DateTime.Now;
-        
-        // Tell emote it's been collected
-        emote.OnCollected();
+        // Start eating sequence
+        StartCoroutine(EatingSequence(emote));
     }
     
-    private void SetupWalkBehavior(Collider walkBounds, float walkSpeed)
+    public void MoveToVipRock(Transform vipRock)
+    {
+        if (walkBehavior != null)
+        {
+            // Set destination to VIP rock position
+            walkBehavior.StopWalking();
+            transform.SetParent(vipRock);
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            //walkBehavior.EnqueueTarget(vipRock.position);
+            //walkBehavior.StartWalking();
+            vipRockTarget = vipRock; // Store reference for when we arrive
+            
+            CommandsManager commandsManager = FindObjectOfType<CommandsManager>();
+            if (commandsManager != null)
+            {
+                commandsManager.OnAvatarMountedVipRock(username);
+            }
+            
+            vipRockTarget = null; // Clear the target
+            
+            Debug.Log($"{username} moving to VIP rock");
+        }
+    }
+    
+    public bool CheckIfReachedVipRock(Vector3 reachedPosition)
+    {
+        if (vipRockTarget != null)
+        {
+            float distance = Vector3.Distance(reachedPosition, vipRockTarget.position);
+            if (distance < 1f) // Close enough to VIP rock
+            {
+                // We've reached the VIP rock - stop walking and mount it
+                walkBehavior.StopWalking();
+            
+                // Parent to the rock and reset position
+                transform.SetParent(vipRockTarget);
+                transform.localPosition = Vector3.zero;
+                transform.localRotation = Quaternion.identity;
+            
+                Debug.Log($"{username} has mounted the VIP rock!");
+            
+                // Notify the command manager
+                CommandsManager commandsManager = FindObjectOfType<CommandsManager>();
+                if (commandsManager != null)
+                {
+                    commandsManager.OnAvatarMountedVipRock(username);
+                }
+            
+                vipRockTarget = null; // Clear the target
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private IEnumerator EatingSequence(FallingEmote emote)
+    {
+        int chewCount = Random.Range(2, 5); // Random number of chews
+        float chewSpeed = 0.25f;
+        
+        // Get eating duration and pause walking for that long
+        float eatingDuration = avatarBlendShape.GetEatingDuration(chewCount, chewSpeed);
+        walkBehavior.PauseForDuration(eatingDuration);
+        
+        // Start eating animation
+        yield return StartCoroutine(avatarBlendShape.EatAnimation(chewCount, chewSpeed));
+        
+        Debug.Log($"{username} ate emote: {emote.EmoteData.emoteName} with {chewCount} chews - New scale: {avatarTransform.localScale.x:F2}");
+        
+        // Update activity time and cleanup
+        lastActivityTime = DateTime.Now;
+        emote.OnCollected();
+        isDetectingEmote = false;
+        
+        // Walking will automatically resume after the pause duration
+    }
+    
+    private void SetupWalkBehavior(Collider walkBounds)
     {
         walkBehavior = GetComponent<WalkBehavior>();
         if (walkBehavior == null)
@@ -107,7 +213,7 @@ public class ChatAvatar : MonoBehaviour
             walkBehavior = gameObject.AddComponent<WalkBehavior>();
         }
         
-        walkBehavior.Initialize(walkBounds, walkSpeed);
+        walkBehavior.Initialize(walkBounds);
     }
     
     void ApplyAvatarEffects()
@@ -215,13 +321,12 @@ public class ChatAvatar : MonoBehaviour
         // Example: Parse custom badges, channel-specific badges, etc.
     }
     
-    void CreateNameTag(float height)
+    void CreateNameTag()
     {
         // Add TextMeshPro component
         nameTag = nameTagObject.GetComponent<TextMeshPro>();
         nameTag.text = username;
         // Color will be set in ApplyAvatarEffects() based on user status
-        
         // Make name tag always face camera
         if (cameraToLook != null)
         {

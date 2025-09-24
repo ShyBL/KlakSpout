@@ -5,21 +5,21 @@ using UnityEngine.Pool;
 public class AvatarPoolManager : MonoBehaviour
 {
     [Header("Pool Settings")]
-    [SerializeField] private GameObject avatarPrefab;
     [SerializeField] private int defaultCapacity = 10;
     [SerializeField] private int maxSize = 100;
     [SerializeField] private bool collectionCheck = true;
     [SerializeField] private Transform poolParent;
     
-    private ObjectPool<GameObject> avatarPool;
+    // Dictionary to hold pools for different prefab types
+    private Dictionary<GameObject, ObjectPool<GameObject>> avatarPools = new Dictionary<GameObject, ObjectPool<GameObject>>();
     private HashSet<GameObject> activeAvatars = new HashSet<GameObject>();
     
     private void Awake()
     {
-        InitializePool();
+        InitializePoolParent();
     }
     
-    private void InitializePool()
+    private void InitializePoolParent()
     {
         if (poolParent == null)
         {
@@ -27,32 +27,49 @@ public class AvatarPoolManager : MonoBehaviour
             poolParent = poolContainer.transform;
             poolParent.SetParent(transform);
         }
-        
-        // Initialize Unity's ObjectPool
-        avatarPool = new ObjectPool<GameObject>(
-            createFunc: CreateAvatar,
-            actionOnGet: OnGetAvatar,
-            actionOnRelease: OnReleaseAvatar,
-            actionOnDestroy: OnDestroyAvatar,
-            collectionCheck: collectionCheck,
-            defaultCapacity: defaultCapacity,
-            maxSize: maxSize
-        );
-        
-        Debug.Log($"Avatar pool initialized with capacity: {defaultCapacity}, max size: {maxSize}");
     }
     
-    // Pool callback: Create new avatar instance
-    private GameObject CreateAvatar()
+    // Get or create a pool for a specific prefab
+    private ObjectPool<GameObject> GetOrCreatePool(GameObject prefab)
     {
-        if (avatarPrefab == null)
+        if (prefab == null)
         {
-            Debug.LogError("Avatar prefab is not assigned!");
+            Debug.LogError("Cannot create pool for null prefab!");
             return null;
         }
         
-        GameObject avatar = Instantiate(avatarPrefab, poolParent);
+        if (!avatarPools.ContainsKey(prefab))
+        {
+            // Create new pool for this prefab type
+            avatarPools[prefab] = new ObjectPool<GameObject>(
+                createFunc: () => CreateAvatar(prefab),
+                actionOnGet: OnGetAvatar,
+                actionOnRelease: OnReleaseAvatar,
+                actionOnDestroy: OnDestroyAvatar,
+                collectionCheck: collectionCheck,
+                defaultCapacity: defaultCapacity,
+                maxSize: maxSize
+            );
+            
+            Debug.Log($"Created new avatar pool for prefab: {prefab.name}");
+        }
+        
+        return avatarPools[prefab];
+    }
+    
+    // Pool callback: Create new avatar instance
+    private GameObject CreateAvatar(GameObject prefab)
+    {
+        GameObject avatar = Instantiate(prefab, poolParent);
         avatar.SetActive(false);
+        
+        // Store reference to original prefab for pool identification
+        AvatarPoolReference poolRef = avatar.GetComponent<AvatarPoolReference>();
+        if (poolRef == null)
+        {
+            poolRef = avatar.AddComponent<AvatarPoolReference>();
+        }
+        poolRef.originalPrefab = prefab;
         
         return avatar;
     }
@@ -89,39 +106,58 @@ public class AvatarPoolManager : MonoBehaviour
         }
     }
     
+    public GameObject GetAvatar(GameObject prefab)
+    {
+        ObjectPool<GameObject> pool = GetOrCreatePool(prefab);
+        if (pool != null)
+        {
+            return pool.Get();
+        }
+        
+        Debug.LogError($"Failed to get avatar from pool for prefab: {prefab?.name}");
+        return null;
+    }
+    
+    // Fallback method for backward compatibility
     public GameObject GetAvatar()
     {
-        return avatarPool.Get();
+        Debug.LogWarning("GetAvatar() called without prefab parameter. This is deprecated!");
+        return null;
     }
     
     public void ReturnAvatar(GameObject avatar)
     {
         if (avatar == null) return;
         
-        // Only release if it's actually from our pool
-        if (activeAvatars.Contains(avatar))
+        // Only release if it's actually from our pools
+        if (!activeAvatars.Contains(avatar))
         {
-            avatarPool.Release(avatar);
+            Debug.LogWarning("Trying to return avatar that's not from this pool!");
+            return;
+        }
+        
+        // Find which pool this avatar belongs to
+        AvatarPoolReference poolRef = avatar.GetComponent<AvatarPoolReference>();
+        if (poolRef == null || poolRef.originalPrefab == null)
+        {
+            Debug.LogError("Avatar missing pool reference! Cannot return to pool.");
+            Destroy(avatar);
+            return;
+        }
+        
+        if (avatarPools.ContainsKey(poolRef.originalPrefab))
+        {
+            avatarPools[poolRef.originalPrefab].Release(avatar);
         }
         else
         {
-            Debug.LogWarning("Trying to return avatar that's not from this pool!");
+            Debug.LogError($"Pool not found for prefab: {poolRef.originalPrefab.name}");
+            Destroy(avatar);
         }
     }
     
     private void ResetAvatarState(GameObject avatar)
     {
-        // Reset position and rotation
-        avatar.transform.localPosition = Vector3.zero;
-        avatar.transform.localRotation = Quaternion.identity;
-        
-        // Stop any walking behavior
-        WalkBehavior walkBehavior = avatar.GetComponent<WalkBehavior>();
-        if (walkBehavior != null)
-        {
-            walkBehavior.StopWalking();
-        }
-        
         // Reset ChatAvatar component if it exists
         ChatAvatar chatAvatar = avatar.GetComponent<ChatAvatar>();
         if (chatAvatar != null)
@@ -137,12 +173,22 @@ public class AvatarPoolManager : MonoBehaviour
     
     public int GetInactiveCount()
     {
-        return avatarPool.CountInactive;
+        int totalInactive = 0;
+        foreach (var pool in avatarPools.Values)
+        {
+            totalInactive += pool.CountInactive;
+        }
+        return totalInactive;
     }
     
     public int GetTotalCount()
     {
-        return avatarPool.CountAll;
+        int totalCount = 0;
+        foreach (var pool in avatarPools.Values)
+        {
+            totalCount += pool.CountAll;
+        }
+        return totalCount;
     }
     
     public void ClearPool()
@@ -154,16 +200,39 @@ public class AvatarPoolManager : MonoBehaviour
             ReturnAvatar(avatar);
         }
         
-        // Clear the pool
-        avatarPool.Clear();
+        // Clear all pools
+        foreach (var pool in avatarPools.Values)
+        {
+            pool.Clear();
+        }
         
-        Debug.Log("Avatar pool cleared");
+        avatarPools.Clear();
+        
+        Debug.Log("All avatar pools cleared");
+    }
+    
+    public Dictionary<string, int> GetPoolStats()
+    {
+        Dictionary<string, int> stats = new Dictionary<string, int>();
+        
+        foreach (var kvp in avatarPools)
+        {
+            string prefabName = kvp.Key.name;
+            int count = kvp.Value.CountAll;
+            stats[prefabName] = count;
+        }
+        
+        return stats;
     }
     
     private void OnDestroy()
     {
-        // Clean up pool when manager is destroyed
-        avatarPool?.Clear();
+        // Clean up pools when manager is destroyed
+        foreach (var pool in avatarPools.Values)
+        {
+            pool?.Clear();
+        }
+        avatarPools.Clear();
     }
     
     // Debug info for inspector
@@ -173,6 +242,7 @@ public class AvatarPoolManager : MonoBehaviour
         public int activeCount;
         public int inactiveCount;
         public int totalCount;
+        public int poolTypes;
     }
     
     [Header("Debug Info (Read Only)")]
@@ -181,11 +251,16 @@ public class AvatarPoolManager : MonoBehaviour
     private void Update()
     {
         // Update debug info in inspector
-        if (avatarPool != null)
-        {
-            debugInfo.activeCount = activeAvatars.Count;
-            debugInfo.inactiveCount = avatarPool.CountInactive;
-            debugInfo.totalCount = avatarPool.CountAll;
-        }
+        debugInfo.activeCount = activeAvatars.Count;
+        debugInfo.inactiveCount = GetInactiveCount();
+        debugInfo.totalCount = GetTotalCount();
+        debugInfo.poolTypes = avatarPools.Count;
     }
+}
+
+// Helper component to track which prefab an avatar instance came from
+public class AvatarPoolReference : MonoBehaviour
+{
+    [HideInInspector]
+    public GameObject originalPrefab;
 }
