@@ -31,11 +31,11 @@ public class EmoteManager : MonoBehaviour
     private HashSet<GameObject> activeEmotes = new HashSet<GameObject>();
     private List<FallingEmote> landedEmotes = new List<FallingEmote>();
     
-    private TwitchChatClient chatClient;
+    private TwitchAPIClient chatClient;
     
     private void Awake()
     {
-        chatClient = FindObjectOfType<TwitchChatClient>();
+        chatClient = FindObjectOfType<TwitchAPIClient>();
         if (chatClient == null)
         {
             Debug.LogError("TwitchChatClient not found!");

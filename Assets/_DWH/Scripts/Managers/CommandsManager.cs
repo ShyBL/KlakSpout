@@ -19,7 +19,7 @@ public class CommandsManager : MonoBehaviour
    // [SerializeField] private float minimumScaleRequired = 2f;
    
     [Header("References")]
-    private TwitchChatClient chatClient;
+    private TwitchAPIClient chatClient;
     private ChatAvatarManager avatarManager;
     
    // private bool someoneHeadingToRock = false;
@@ -27,7 +27,7 @@ public class CommandsManager : MonoBehaviour
     private void Start()
     {
         // Find required components
-        chatClient = FindObjectOfType<TwitchChatClient>();
+        chatClient = FindObjectOfType<TwitchAPIClient>();
         avatarManager = FindObjectOfType<ChatAvatarManager>();
         
         if (chatClient == null)

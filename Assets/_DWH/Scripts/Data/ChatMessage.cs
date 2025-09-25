@@ -10,6 +10,8 @@ public struct ChatMessage
     
     // Channel Points Redeem Info
     public string customRewardId;
+    public string customRewardTitle;
+    public long customRewardCost;
         
     // Badge info
     public bool isSubscriber;
@@ -26,6 +28,21 @@ public struct ChatMessage
     public bool hasBits;
     public int bitsAmount;
         
+    // Subscription data
+    public string subTier;
+    public bool isGift;
+    
+    // Follow data
+    public string followedAt;
+    
+    // Hype train data
+    public int hypeTrainLevel;
+    public long hypeTrainProgress;
+    public long hypeTrainGoal;
+    
+    // Raid data
+    public long raidViewerCount;
+    
     // User Notice info
     public UserNoticeType noticeType;
     public string systemMessage;

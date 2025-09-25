@@ -20,13 +20,13 @@ public class ChatAvatarManager : MonoBehaviour
     [SerializeField] private float despawnCheckInterval = 30f; // Check every 30 seconds
     
     private Dictionary<string, ChatAvatar> activeAvatars = new Dictionary<string, ChatAvatar>();
-    private TwitchChatClient chatClient;
+    private TwitchAPIClient chatClient;
     private AvatarPoolManager poolManager;
     private AvatarFamily selectedFamily;
     
     void Start()
     {
-        chatClient = FindObjectOfType<TwitchChatClient>();
+        chatClient = FindObjectOfType<TwitchAPIClient>();
         if (chatClient == null)
         {
             Debug.LogError("TwitchChatClient not found!");
