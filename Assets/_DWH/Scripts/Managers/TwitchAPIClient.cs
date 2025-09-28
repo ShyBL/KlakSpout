@@ -3,22 +3,26 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using TMPro;
 using UnityEngine;
 using TwitchSDK;
 using TwitchSDK.Interop;
+using UnityEngine.UI;
 
 public class TwitchAPIClient : MonoBehaviour
 {
+    [SerializeField] private TMP_InputField nicknameInput;
+    [SerializeField] private TMP_InputField oauthTokenInput;
+    [SerializeField] private TMP_InputField channelNameInput;
+    [SerializeField] private Button connectButton;
+    [SerializeField] private TextMeshProUGUI apiStatusText;
+    [SerializeField] private TextMeshProUGUI chatStatusText;
+
+    [SerializeField] private Canvas statusCanvas;
+    
     [Header("Configuration")]
-    [SerializeField] private string channel = "dogxwillxhuntx";
+    [SerializeField] private string channel = "";
     [SerializeField] private string username = "";
-    [SerializeField] private string[] requiredScopes = {
-        "channel:read:subscriptions",
-        "channel:read:redemptions",
-        "moderator:read:followers",
-        "chat:read",
-        "chat:edit"
-    };
     
     [Header("Reconnection")]
     [SerializeField] private float authCheckInterval = 10.0f;
@@ -35,11 +39,6 @@ public class TwitchAPIClient : MonoBehaviour
     
     // Event streams
     private GameTask<EventStream<CustomRewardEvent>> customRewardEvents;
-    private GameTask<EventStream<ChannelFollowEvent>> followEvents;
-    private GameTask<EventStream<ChannelSubscribeEvent>> subscribeEvents;
-    private GameTask<EventStream<HypeTrainEvent>> hypeTrainEvents;
-    private GameTask<EventStream<ChannelRaidEvent>> raidEvents;
-    private GameTask<EventStream<ChannelCheerEvent>> cheerEvents;
     
     // User and stream info
     private GameTask<UserInfo> userInfoTask;
@@ -58,12 +57,57 @@ public class TwitchAPIClient : MonoBehaviour
     
     void Start()
     {
-        authCheckTimer = 0f;
-        UpdateAuthState();
-        
-        // Initialize timer to trigger an immediate connection attempt via Update()
-        reconnectTimer = 0f;
+        // Initialize timers but don't start connection process
+        authCheckTimer = authCheckInterval; // Set to full interval so it doesn't check immediately
+        reconnectTimer = float.MaxValue; // Set to max value so it never triggers automatically
         isConnected = false;
+    
+        // Setup UI button listener
+        if (connectButton != null)
+        {
+            connectButton.onClick.AddListener(OnConnectButtonClicked);
+        }
+    }
+
+    void OnConnectButtonClicked()
+    {
+        // Get values from input fields
+        username = nicknameInput.text.Trim();
+        oAuthToken = oauthTokenInput.text.Trim();
+        channel = channelNameInput.text.Trim();
+    
+        // Validate inputs
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(oAuthToken) || string.IsNullOrEmpty(channel))
+        {
+            if (apiStatusText != null)
+            {
+                apiStatusText.text = "Please fill all fields";
+                apiStatusText.color = Color.red;
+            }
+            return;
+        }
+    
+        // Remove oauth: prefix if user included it
+        if (oAuthToken.StartsWith("oauth:"))
+        {
+            oAuthToken = oAuthToken.Substring(6);
+        }
+    
+        // Update status and start connection process
+        if (apiStatusText != null)
+        {
+            apiStatusText.text = "Connecting...";
+            apiStatusText.color = Color.yellow;
+        }
+        
+        RequestAuthentication();
+    
+        // Reset timers to start the connection process
+        authCheckTimer = 0f;
+        reconnectTimer = 0f;
+    
+        // Start auth state checking
+        UpdateAuthState();
     }
     
     void Update()
@@ -98,6 +142,18 @@ public class TwitchAPIClient : MonoBehaviour
         }
     }
     
+    public void RequestAuthentication()
+    {
+        if (authInfoTask == null)
+        {
+            // Create scope object properly according to documentation
+            var scopeString = TwitchOAuthScope.Channel.ManageRedemptions.Scope;
+            var requiredScopes = new TwitchOAuthScope(scopeString);
+        
+            authInfoTask = Twitch.API.GetAuthenticationInfo(requiredScopes);
+        }
+    }
+    
     void UpdateAuthState()
     {
         currentAuthState = Twitch.API.GetAuthState();
@@ -114,9 +170,11 @@ public class TwitchAPIClient : MonoBehaviour
                 if (!isAuthConnected)
                 {
                     isAuthConnected = true;
-                    oAuthToken = 
                     SubscribeToEvents();
                     Debug.Log("Connected to Twitch API");
+                    
+                    apiStatusText.text = "Connected Twitch API";
+                    apiStatusText.color = Color.green;
                 }
                 break;
                 
@@ -129,11 +187,19 @@ public class TwitchAPIClient : MonoBehaviour
                 break;
                 
             case AuthStatus.WaitingForCode:
-                if (authInfoTask?.MaybeResult != null)
+                if (authInfoTask?.IsCompleted == true && authInfoTask.MaybeResult != null)
                 {
                     var userAuthInfo = authInfoTask.MaybeResult;
                     Debug.Log($"Please visit: {userAuthInfo.Uri}{userAuthInfo.UserCode}");
                     Application.OpenURL($"{userAuthInfo.Uri}{userAuthInfo.UserCode}");
+        
+                    apiStatusText.text = "Please complete authentication in browser";
+                    apiStatusText.color = Color.yellow;
+                }
+                else
+                {
+                    apiStatusText.text = "Requesting authentication...";
+                    apiStatusText.color = Color.yellow;
                 }
                 break;
         }
@@ -151,21 +217,6 @@ public class TwitchAPIClient : MonoBehaviour
             // Subscribe to channel point redemptions
             customRewardEvents = Twitch.API.SubscribeToCustomRewardEvents();
             
-            // Subscribe to follows
-            followEvents = Twitch.API.SubscribeToChannelFollowEvents();
-            
-            // Subscribe to subscriptions
-            subscribeEvents = Twitch.API.SubscribeToChannelSubscribeEvents();
-            
-            // Subscribe to hype trains
-            hypeTrainEvents = Twitch.API.SubscribeToHypeTrainEvents();
-            
-            // Subscribe to raids
-            raidEvents = Twitch.API.SubscribeToChannelRaidEvents();
-            
-            // Subscribe to bits use
-            cheerEvents = Twitch.API.SubscribeToChannelCheerEvents();
-            
             Debug.Log("Subscribed to Twitch events");
         }
         catch (Exception e)
@@ -179,90 +230,24 @@ public class TwitchAPIClient : MonoBehaviour
         // Process channel point redemptions
         if (customRewardEvents?.MaybeResult != null)
         {
-            if (customRewardEvents.MaybeResult.TryGetNextEvent(out var rewardEvent))
+            CustomRewardEvent rewardEvent;
+            if (customRewardEvents.MaybeResult.TryGetNextEvent(out rewardEvent))
             {
-                var message = new ChatMessage
+                if (rewardEvent != null)
                 {
-                    timestamp = DateTime.Now,
-                    type = MessageType.ChannelPointRedemption,
-                    username = rewardEvent.RedeemerName,
-                    message = rewardEvent.UserInput ?? "",
-                    customRewardId = rewardEvent.CustomRewardId,
-                    customRewardTitle = rewardEvent.CustomRewardTitle,
-                    customRewardCost = rewardEvent.CustomRewardCost
-                };
+                    var message = new ChatMessage
+                    {
+                        timestamp = DateTime.Now,
+                        type = MessageType.ChannelPointRedemption,
+                        username = rewardEvent.RedeemerName,
+                        message = rewardEvent.UserInput ?? "",
+                        customRewardId = rewardEvent.CustomRewardId,
+                        customRewardTitle = rewardEvent.CustomRewardTitle,
+                        customRewardCost = rewardEvent.CustomRewardCost
+                    };
                 
-                OnMessageReceived?.Invoke(message);
-            }
-        }
-        
-        // Process follows
-        if (followEvents?.MaybeResult != null)
-        {
-            if (followEvents.MaybeResult.TryGetNextEvent(out var followEvent))
-            {
-                var message = new ChatMessage
-                {
-                    timestamp = DateTime.Now,
-                    type = MessageType.Follow,
-                    username = followEvent.UserDisplayName,
-                    followedAt = followEvent.FollowedAt
-                };
-                
-                OnMessageReceived?.Invoke(message);
-            }
-        }
-        
-        // Process subscriptions
-        if (subscribeEvents?.MaybeResult != null)
-        {
-            if (subscribeEvents.MaybeResult.TryGetNextEvent(out var subEvent))
-            {
-                var message = new ChatMessage
-                {
-                    timestamp = DateTime.Now,
-                    type = MessageType.Subscription,
-                    username = subEvent.UserDisplayName,
-                    subTier = subEvent.Tier,
-                    isGift = subEvent.IsGift
-                };
-                
-                OnMessageReceived?.Invoke(message);
-            }
-        }
-        
-        // Process hype trains
-        if (hypeTrainEvents?.MaybeResult != null)
-        {
-            if (hypeTrainEvents.MaybeResult.TryGetNextEvent(out var hypeEvent))
-            {
-                var message = new ChatMessage
-                {
-                    timestamp = DateTime.Now,
-                    type = MessageType.HypeTrain,
-                    hypeTrainLevel = hypeEvent.Level,
-                    hypeTrainProgress = hypeEvent.Progress,
-                    hypeTrainGoal = hypeEvent.Goal
-                };
-                
-                OnMessageReceived?.Invoke(message);
-            }
-        }
-        
-        // Process raids
-        if (raidEvents?.MaybeResult != null)
-        {
-            if (raidEvents.MaybeResult.TryGetNextEvent(out var raidEvent))
-            {
-                var message = new ChatMessage
-                {
-                    timestamp = DateTime.Now,
-                    type = MessageType.Raid,
-                    username = raidEvent.FromBroadcasterName,
-                    raidViewerCount = raidEvent.Viewers
-                };
-                
-                OnMessageReceived?.Invoke(message);
+                    OnMessageReceived?.Invoke(message);
+                }
             }
         }
     }
@@ -313,14 +298,16 @@ public class TwitchAPIClient : MonoBehaviour
             
             // Use authenticated connection with bot capabilities
             writer.WriteLine("CAP REQ :twitch.tv/tags twitch.tv/commands");
-            writer.WriteLine($"PASS oauth:{oAuthToken}"); // You'll need to implement this
-            writer.WriteLine($"NICK {username}"); // You'll need to implement this
+            writer.WriteLine($"PASS oauth:{oAuthToken}");
+            writer.WriteLine($"NICK {username}"); 
             writer.WriteLine($"JOIN #{channel.ToLower()}");
             
             isConnected = true;
             StartCoroutine(ReadChatMessages());
             
-            Debug.Log($"Connected anonymously to Twitch chat: #{channel}");
+            Debug.Log($"Connected to Twitch chat: #{channel}");
+            chatStatusText.text = $"Connected to #{channel}";
+            chatStatusText.color = Color.green;
         }
         catch (Exception e)
         {
