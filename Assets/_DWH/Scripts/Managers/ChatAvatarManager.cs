@@ -11,7 +11,7 @@ public class ChatAvatarManager : MonoBehaviour
     
     [Header("Bounds Settings")]
     [SerializeField] private Collider spawnBounds;
-    [SerializeField] private Collider walkBounds;
+    [SerializeField] private List<Collider> walkBoundsList = new List<Collider>();
     
     [Header("Avatar Settings")]
     [SerializeField] private GameObject cameraToLook;
@@ -43,7 +43,7 @@ public class ChatAvatarManager : MonoBehaviour
         // Use walkBounds as spawnBounds if not set
         if (spawnBounds == null)
         {
-            spawnBounds = walkBounds;
+            spawnBounds = walkBoundsList[0];
         }
         
         chatClient.OnMessageReceived += OnChatMessage;
@@ -138,7 +138,7 @@ public class ChatAvatarManager : MonoBehaviour
     
     void SpawnAvatar(string username, ChatMessage message)
     {
-        if (spawnBounds == null || walkBounds == null)
+        if (spawnBounds == null || walkBoundsList == null)
         {
             Debug.LogError("Spawn bounds or walk bounds not set!");
             return;
@@ -161,7 +161,8 @@ public class ChatAvatarManager : MonoBehaviour
         }
     
         // Position avatar within spawn bounds
-        Vector3 spawnPosition = GetRandomPointInBounds(spawnBounds);
+        Vector3 spawnPosition = GetRandomPointInCompositeBounds();
+        
         avatarObj.transform.position = spawnPosition;
         avatarObj.transform.SetParent(transform);
         avatarObj.name = $"Avatar_{username}_{prefabToUse.name}";
@@ -173,7 +174,7 @@ public class ChatAvatarManager : MonoBehaviour
             avatarScript = avatarObj.AddComponent<ChatAvatar>();
         }
     
-        avatarScript.Initialize(username, message, walkBounds, cameraToLook, selectedFamily);
+        avatarScript.Initialize(username, message, walkBoundsList, cameraToLook, selectedFamily);
     
         // Store reference
         activeAvatars[username] = avatarScript;
@@ -257,94 +258,20 @@ public class ChatAvatarManager : MonoBehaviour
         return family.variants[family.variants.Count - 1]; // Fallback to last variant
     }
     
-    // private GameObject GetAvatarPrefab(ChatMessage message)
-    // {
-    //     string username = message.username.ToLower();
-    //
-    //     // Special case for broadcaster
-    //     if (username == chatClient.channel)
-    //     {
-    //         return broadcasterPrefab != null ? broadcasterPrefab : 
-    //             (avatarPrefabs.Count > 0 ? avatarPrefabs[0] : null);
-    //     }
-    //
-    //     // Check if we have any prefabs available
-    //     if (avatarPrefabs.Count == 0)
-    //     {
-    //         Debug.LogWarning("No avatar prefabs assigned!");
-    //         return null;
-    //     }
-    //
-    //     // Use username hash as seed for consistent results per user
-    //     Random.State originalState = Random.state;
-    //     Random.InitState(username.GetHashCode());
-    //
-    //     // Select random prefab from the list
-    //     GameObject selectedPrefab = avatarPrefabs[Random.Range(0, avatarPrefabs.Count)];
-    //
-    //     Random.state = originalState;
-    //     return selectedPrefab;
-    // }
-    
-    // private GameObject GetAvatarPrefab(ChatMessage message)
-    // {
-    //     string username = message.username.ToLower();
-    //
-    //     // Special case for broadcaster
-    //     if (username == chatClient.channel)
-    //     {
-    //         return broadcasterPrefab != null ? broadcasterPrefab : namazuPrefab;
-    //     }
-    //     
-    //     if (username == "darthblechman")
-    //     {
-    //         return namazuPrefab != null ? namazuPrefab : fatNamazuPrefab;
-    //     }
-    //
-    //     // Use username hash as seed for consistent results per user
-    //     Random.State originalState = Random.state;
-    //     Random.InitState(username.GetHashCode());
-    //
-    //     GameObject selectedPrefab;
-    //
-    //     // 40% chance for namazu family, 60% chance for dokujin
-    //     if (Random.Range(0f, 1f) < 0.4f)
-    //     {
-    //         // User gets a namazu - now decide which type
-    //         // 30% fat namazu, 70% normal namazu
-    //         selectedPrefab = Random.Range(0f, 1f) < 0.3f ? fatNamazuPrefab : namazuPrefab;
-    //     }
-    //     else
-    //     {
-    //         // User gets dokujin
-    //         selectedPrefab = dokujinPrefab;
-    //     }
-    //
-    //     Random.state = originalState;
-    //     return selectedPrefab;
-    // }
-    
-    private Vector3 GetRandomPointInBounds(Collider bounds)
+    private Vector3 GetRandomPointInCompositeBounds()
     {
-        Bounds boundsBox = bounds.bounds;
-        
-        // Generate random point within bounds
+        if (walkBoundsList == null || walkBoundsList.Count == 0) return transform.position;
+
+        Collider selected = walkBoundsList[Random.Range(0, walkBoundsList.Count)];
+        Bounds bounds = selected.bounds;
+
         Vector3 randomPoint = new Vector3(
-            Random.Range(boundsBox.min.x, boundsBox.max.x),
-            boundsBox.center.y,
-            Random.Range(boundsBox.min.z, boundsBox.max.z)
+            Random.Range(bounds.min.x, bounds.max.x),
+            bounds.center.y,
+            Random.Range(bounds.min.z, bounds.max.z)
         );
-        
-        // Ensure the point is actually inside the collider
-        Vector3 closestPoint = bounds.ClosestPoint(randomPoint);
-        
-        // If the closest point is significantly different, use it instead
-        if (Vector3.Distance(randomPoint, closestPoint) > 0.1f)
-        {
-            randomPoint = closestPoint;
-        }
-        
-        return randomPoint;
+
+        return selected.ClosestPoint(randomPoint);
     }
     
     private IEnumerator DespawnManagementCoroutine()
@@ -424,10 +351,13 @@ public class ChatAvatarManager : MonoBehaviour
             Gizmos.DrawWireCube(spawnBounds.bounds.center, spawnBounds.bounds.size);
         }
         
-        if (walkBounds != null && walkBounds != spawnBounds)
+        if (walkBoundsList != null)
         {
             Gizmos.color = Color.blue;
-            Gizmos.DrawWireCube(walkBounds.bounds.center, walkBounds.bounds.size);
+            foreach (var col in walkBoundsList)
+            {
+                Gizmos.DrawWireCube(col.bounds.center, col.bounds.size);
+            }
         }
     }
 

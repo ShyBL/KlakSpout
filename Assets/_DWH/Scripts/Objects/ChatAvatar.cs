@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
 using System.Collections;
+using System.Collections.Generic;
 using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
@@ -37,7 +38,7 @@ public class ChatAvatar : MonoBehaviour
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
     
-    public void Initialize(string user, ChatMessage message, Collider walkBounds, GameObject cameraToLook, AvatarFamily family)
+    public void Initialize(string user, ChatMessage message, List<Collider> walkBounds, GameObject cameraToLook, AvatarFamily family)
     {
         username = user;
         messageData = message;
@@ -151,7 +152,7 @@ public class ChatAvatar : MonoBehaviour
         return false;
     }
     
-    private void SetupWalkBehavior(Collider walkBounds)
+    private void SetupWalkBehavior(List<Collider> walkBounds)
     {
         walkBehavior = GetComponent<WalkBehavior>();
         if (walkBehavior == null)
