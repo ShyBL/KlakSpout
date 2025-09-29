@@ -36,11 +36,12 @@ public class DebugConsole : MonoBehaviour
     [SerializeField] private float logLineHeight = 20f;
     [SerializeField] private int logFontSize = 16;
     [SerializeField] private int maxLogEntries = 1000;
-    
+    [SerializeField] private bool showDebugConsole = false;
+
     // State for avatar options
     private ChatAvatar selectedAvatarObject = null;
     private bool showAvatarOptions = false;
-    
+
     // Custom GUIStyle for the console logs
     private GUIStyle logStyle;
 
@@ -88,9 +89,13 @@ public class DebugConsole : MonoBehaviour
 
         // Avatar Management Panel
         DrawAvatarPanel();
-        
-        // Debug Console Panel
-        //DrawConsolePanel(consolePanelX, consolePanelWidth);
+
+        if (showDebugConsole)
+        {
+            // Debug Console Panel
+            DrawConsolePanel(consolePanelX, consolePanelWidth);
+        }
+       
         
         // Avatar Options Popup
         if (showAvatarOptions)

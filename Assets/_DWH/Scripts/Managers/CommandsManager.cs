@@ -16,13 +16,13 @@ public class CommandsManager : MonoBehaviour
     
     [Header("VIP Rock Settings")]
     [SerializeField] private Transform vipRock;
-   // [SerializeField] private float minimumScaleRequired = 2f;
+    // [SerializeField] private float minimumScaleRequired = 2f;
    
     [Header("References")]
     private TwitchChatClient chatClient;
     private ChatAvatarManager avatarManager;
     
-   // private bool someoneHeadingToRock = false;
+    // private bool someoneHeadingToRock = false;
     private string usernameHeadingToRock = "";
     private void Start()
     {
@@ -110,12 +110,12 @@ public class CommandsManager : MonoBehaviour
         // If the rock is occupied, start a fight. Otherwise, claim it.
         if (vipRock.childCount > 0)
         {
-            SendAutoMessage($"@{username} redeemed VIP and is challenging for the rock!");
+            Debug.Log($"@{username} redeemed VIP and is challenging for the rock!");
             HandleFightCommand(username); // Reuse existing fight logic
         }
         else
         {
-            SendAutoMessage($"@{username} redeemed VIP and is claiming the rock!");
+            Debug.Log($"@{username} redeemed VIP and is claiming the rock!");
             HandleVipCommand(username); // Reuse existing VIP logic
         }
     }
@@ -123,7 +123,7 @@ public class CommandsManager : MonoBehaviour
     private void HandleRerollRedeem(string username)
     {
         avatarManager.RerollAvatar(username);
-        SendAutoMessage($"@{username} has rerolled their avatar!");
+        Debug.Log($"@{username} has rerolled their avatar!");
     }
 
     private void HandleDuelRedeem(string username)
@@ -138,7 +138,7 @@ public class CommandsManager : MonoBehaviour
 
         if (potentialOpponents.Count == 0)
         {
-            SendAutoMessage($"@{username} wants to duel, but there are no opponents available!");
+            Debug.Log($"@{username} wants to duel, but there are no opponents available!");
             return;
         }
 
@@ -149,7 +149,7 @@ public class CommandsManager : MonoBehaviour
         float challengerSize = challenger.avatarTransform.localScale.x;
         float opponentSize = opponent.avatarTransform.localScale.x;
         
-        SendAutoMessage($"DUEL! @{challenger.Username} (size: {challengerSize:F1}) challenges @{opponent.Username} (size: {opponentSize:F1})!");
+        Debug.Log($"DUEL! @{challenger.Username} (size: {challengerSize:F1}) challenges @{opponent.Username} (size: {opponentSize:F1})!");
 
         ChatAvatar winner, loser;
         if (challengerSize >= opponentSize)
@@ -163,7 +163,7 @@ public class CommandsManager : MonoBehaviour
             loser = challenger;
         }
 
-        SendAutoMessage($"@{winner.Username} has won the duel! @{loser.Username} has been defeated. 💥");
+        Debug.Log($"@{winner.Username} has won the duel! @{loser.Username} has been defeated. 💥");
         avatarManager.RemoveAvatar(loser.Username); // Remove the loser
     }
 
@@ -177,7 +177,7 @@ public class CommandsManager : MonoBehaviour
             // Example:
             // avatar.RandomizeColor();
             
-            SendAutoMessage($"@{username} has colorified their avatar!");
+            Debug.Log($"@{username} has colorified their avatar!");
             Debug.Log($"Colorify command called for {username}. Implement the color change logic on your ChatAvatar script.");
         }
     }
@@ -194,15 +194,66 @@ public class CommandsManager : MonoBehaviour
         {
             HandleFightCommand(message.username);
         }
+        else if (command.StartsWith("!pet"))
+        {
+            HandlePetCommand(message.username,message.ToString());
+        }
     }
+
+    private void HandlePetCommand(string username, string command)
+    {
+// Check if the user's avatar is active
+        ChatAvatar userAvatar = FindAvatarByUsername(username);
+        if (userAvatar == null)
+        {
+            Debug.Log($"@{username} Your avatar is not currently active!");
+            return;
+        }
     
+        // Parse the target username from the command
+        string[] commandParts = command.Split(' ');
+        if (commandParts.Length < 2)
+        {
+            Debug.Log($"@{username} Please specify who you want to pet! Usage: !pet username");
+            return;
+        }
+    
+        // Get the target username and clean it up
+        string targetUsername = commandParts[1].Trim();
+    
+        // Remove @ symbol if present
+        if (targetUsername.StartsWith("@"))
+        {
+            targetUsername = targetUsername.Substring(1);
+        }
+    
+        // Check if trying to pet themselves
+        if (targetUsername.Equals(username, System.StringComparison.OrdinalIgnoreCase))
+        {
+            Debug.Log($"@{username} You cannot pet yourself!");
+            return;
+        }
+    
+        // Find the target avatar
+        ChatAvatar targetAvatar = FindAvatarByUsername(targetUsername);
+        if (targetAvatar == null)
+        {
+            Debug.Log($"@{username} Could not find an active avatar for @{targetUsername}!");
+            return;
+        }
+    
+        // Execute the pet action
+        avatarManager.PetAvatar(targetUsername);
+        Debug.Log($"@{username} pets @{targetUsername}!");
+    }
+
     private void HandleVipCommand(string username)
     {
         // Find the user's avatar
         ChatAvatar userAvatar = FindAvatarByUsername(username);
         if (userAvatar == null)
         {
-            SendAutoMessage($"@{username} Your avatar is not currently active!");
+            Debug.Log($"@{username} Your avatar is not currently active!");
             return;
         }
     
@@ -217,7 +268,7 @@ public class CommandsManager : MonoBehaviour
         if (vipRock.childCount > 0)
         {
             ChatAvatar currentVip = vipRock.GetChild(0).GetComponent<ChatAvatar>();
-            SendAutoMessage($"@{username} The VIP rock is currently occupied by @{currentVip.Username}! Use !fight to challenge them!");
+            Debug.Log($"@{username} The VIP rock is currently occupied by @{currentVip.Username}! Use !fight to challenge them!");
             return;
         }
     
@@ -241,9 +292,9 @@ public class CommandsManager : MonoBehaviour
     /// <param name="username">Username of avatar that mounted the rock</param>
     public void OnAvatarMountedVipRock(string username)
     {
-       // someoneHeadingToRock = false;
+        // someoneHeadingToRock = false;
         usernameHeadingToRock = "";
-        SendAutoMessage($"@{username} has successfully claimed the VIP rock! 👑");
+        Debug.Log($"@{username} has successfully claimed the VIP rock! 👑");
     }
 
     /// <summary>
@@ -251,7 +302,7 @@ public class CommandsManager : MonoBehaviour
     /// </summary>
     public void OnAvatarFailedToReachVipRock()
     {
-       // someoneHeadingToRock = false;
+        // someoneHeadingToRock = false;
         usernameHeadingToRock = "";
     }
     
@@ -261,14 +312,14 @@ public class CommandsManager : MonoBehaviour
         ChatAvatar challengerAvatar = FindAvatarByUsername(username);
         if (challengerAvatar == null)
         {
-            SendAutoMessage($"@{username} Your avatar is not currently active!");
+            Debug.Log($"@{username} Your avatar is not currently active!");
             return;
         }
         
         // Check if rock is vacant
         if (vipRock.childCount == 0)
         {
-            SendAutoMessage($"@{username} The VIP rock is empty! Use !vip to claim it!");
+            Debug.Log($"@{username} The VIP rock is empty! Use !vip to claim it!");
             return;
         }
         
@@ -280,11 +331,11 @@ public class CommandsManager : MonoBehaviour
             return;
         }
         
-        // Compare sizes
-        float challengerSize = challengerAvatar.avatarTransform.localScale.x;
-        float currentVipSize = currentVip.avatarTransform.localScale.x;
+        // Compare strength
+        float challengerStrength = challengerAvatar.currentStrength;
+        float currentVipStrength = currentVip.currentStrength;
         
-        if (challengerSize > currentVipSize)
+        if (challengerStrength > currentVipStrength)
         {
             // Challenger wins!
             string defeatedUsername = currentVip.Username;
@@ -295,12 +346,12 @@ public class CommandsManager : MonoBehaviour
             // Move challenger to rock
             MoveAvatarToVipRock(challengerAvatar);
             
-            SendAutoMessage($"@{username} (size: {challengerSize:F1}) has defeated @{defeatedUsername} (size: {currentVipSize:F1}) and claimed the VIP rock! 🥊👑");
+            Debug.Log($"@{username} (size: {challengerStrength:F1}) has defeated @{defeatedUsername} (size: {currentVipStrength:F1}) and claimed the VIP rock! 🥊👑");
         }
         else
         {
             // Challenger loses
-            SendAutoMessage($"@{username} (size: {challengerSize:F1}) challenged @{currentVip.Username} (size: {currentVipSize:F1}) but was too small to win! 💪");
+            Debug.Log($"@{username} (size: {challengerStrength:F1}) challenged @{currentVip.Username} (size: {currentVipStrength:F1}) but was too small to win! 💪");
         }
     }
     

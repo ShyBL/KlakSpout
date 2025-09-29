@@ -449,4 +449,13 @@ public class ChatAvatarManager : MonoBehaviour
             SpawnAvatar(lowerUsername, initialMessage);
         }
     }
+
+    public void PetAvatar(string username)
+    {
+        string lowerUsername = username.ToLower();
+        if (activeAvatars.TryGetValue(lowerUsername, out ChatAvatar avatar))
+        {
+            avatar.OnPetted();
+        }
+    }
 }

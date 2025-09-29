@@ -76,11 +76,10 @@ MonoBehaviour:
   avatarRenderer: {fileID: 7406757227159942485}
   avatarTransform: {fileID: 8000616865496563490}
   avatarBlendShape: {fileID: 5503416162411043602}
-  growFactor: 0.05
-  maxScale: 3
-  despawnTimeMinutes: 10
+  despawnTimeMinutes: 30
   nameTagObject: {fileID: 4309116509513915276}
   isDetectingEmote: 0
+  currentStrength: 0
 --- !u!114 &6251061788504359169
 MonoBehaviour:
   m_ObjectHideFlags: 0

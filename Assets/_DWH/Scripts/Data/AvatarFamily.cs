@@ -3,7 +3,8 @@ using UnityEngine;
 
 [System.Serializable]
 public class AvatarFamily
-{ 
+{
+    public float strength;
     public string familyName;
     [Range(0f, 100f)]
     public float spawnChance;

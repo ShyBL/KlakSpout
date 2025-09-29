@@ -2143,6 +2143,10 @@ PrefabInstance:
       propertyPath: avatarBlendShape
       value: 
       objectReference: {fileID: 6748119178130375205}
+    - target: {fileID: 7224929202715795296, guid: 80b0884a6be415a4ab483649a6c8dfb4, type: 3}
+      propertyPath: despawnTimeMinutes
+      value: 30
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
