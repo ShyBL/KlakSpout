@@ -2083,6 +2083,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Senrion
       objectReference: {fileID: 0}
+    - target: {fileID: 2957412838856162327, guid: 80b0884a6be415a4ab483649a6c8dfb4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.6
+      objectReference: {fileID: 0}
     - target: {fileID: 3386086502740064050, guid: 80b0884a6be415a4ab483649a6c8dfb4, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0.5

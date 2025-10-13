@@ -1,19 +1,9 @@
 fileFormatVersion: 2
-guid: 2e754b3318a4cfe4a81147d4184cd686
+guid: 68f5cccdb4b7df9409816ac6b2082da5
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: namazu txt
-    second: {fileID: 2100000, guid: adad36b98d090514fb12910c687fb08a, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: teeth
-    second: {fileID: 2100000, guid: 59720156d21c08b4f90f6c76e6191a98, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0

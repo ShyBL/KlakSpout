@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 5756552223126914364}
   - component: {fileID: 4713810972114128645}
   m_Layer: 8
-  m_Name: FatNamazu
+  m_Name: FatAshNamazu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -76,6 +76,7 @@ MonoBehaviour:
   nameTagObject: {fileID: 4309116509513915276}
   isDetectingEmote: 0
   currentStrength: 0
+  OnVIP: 0
 --- !u!114 &6251061788504359169
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94,6 +95,7 @@ MonoBehaviour:
   targetReachDistance: 0.5
   animator: {fileID: 3942175081261155244}
   animationTransitionSpeed: 5
+  IS_VIP_PARAM: isVIP
 --- !u!54 &8044052518270289018
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -565,6 +567,14 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 4992292799375637511, guid: 964184ae81ba6c84e9083141749917c9, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 7078ecffad1644e43971bc4607d6cb8b, type: 2}
+    - target: {fileID: 4992292799375637511, guid: 964184ae81ba6c84e9083141749917c9, type: 3}
+      propertyPath: m_Materials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: 59720156d21c08b4f90f6c76e6191a98, type: 2}
     - target: {fileID: 5372666878324963973, guid: 964184ae81ba6c84e9083141749917c9, type: 3}
       propertyPath: m_Layer
       value: 3
