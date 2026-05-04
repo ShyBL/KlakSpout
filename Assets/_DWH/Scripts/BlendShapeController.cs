@@ -35,16 +35,23 @@ public class BlendShapeController : MonoBehaviour
         {
             // Get mesh
             characterMesh = skinnedMeshRenderer.sharedMesh;
-
-            // Cache blend shape indices for performance
-            mouthBlendShapeIndex = characterMesh.GetBlendShapeIndex(mouthBlendShapeName);
-            earsBlendShapeIndex = characterMesh.GetBlendShapeIndex(earsBlendShapeName);
-
-            // Validate blend shapes exist
-            if (mouthBlendShapeIndex < 0)
-                Debug.LogWarning($"Blend shape '{mouthBlendShapeName}' not found on mesh!");
-            if (earsBlendShapeIndex < 0)
-                Debug.LogWarning($"Blend shape '{earsBlendShapeName}' not found on mesh!");
+            if (characterMesh != null)
+            {
+                // Cache blend shape indices for performance
+                if (mouthBlendShapeName != null)
+                {
+                    mouthBlendShapeIndex = characterMesh.GetBlendShapeIndex(mouthBlendShapeName);
+                    // Validate blend shapes exist
+                    if (mouthBlendShapeIndex != null && mouthBlendShapeIndex < 0)
+                        Debug.Log($"Blend shape '{mouthBlendShapeName}' not found on mesh!");
+                }
+                if (earsBlendShapeName != null)
+                {
+                    earsBlendShapeIndex = characterMesh.GetBlendShapeIndex(earsBlendShapeName);
+                    if (earsBlendShapeIndex != null && earsBlendShapeIndex < 0)
+                        Debug.Log($"Blend shape '{earsBlendShapeName}' not found on mesh!");
+                }
+            }
         }
         else
         {

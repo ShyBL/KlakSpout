@@ -36,6 +36,7 @@ Transform:
   m_Children:
   - {fileID: 2744685966191159484}
   - {fileID: 8215458591698727830}
+  - {fileID: 5207994396130709868}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &7224929202715795296
@@ -167,6 +168,68 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.5, y: 0.5, z: 1.5}
   m_Center: {x: 0, y: 0.2, z: 0}
+--- !u!1001 &715941707233199961
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 4972420470536718354}
+    m_Modifications:
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.48
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5396115905407962255, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+      propertyPath: m_Name
+      value: hand petting
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+--- !u!4 &5207994396130709868 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4731324427967206965, guid: 95d08260d677f674f8a4f5177c8e75f6, type: 3}
+  m_PrefabInstance: {fileID: 715941707233199961}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6612110292928213727
 PrefabInstance:
   m_ObjectHideFlags: 0

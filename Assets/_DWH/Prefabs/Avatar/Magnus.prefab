@@ -243,7 +243,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: dogxwillxhuntx
+  m_text: bashbunni
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0dd75b71cf1c47b4b9533442e8207547, type: 2}
   m_sharedMaterial: {fileID: 840483747255007152, guid: 0dd75b71cf1c47b4b9533442e8207547, type: 2}

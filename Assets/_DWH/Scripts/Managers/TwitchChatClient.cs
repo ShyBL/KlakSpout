@@ -8,7 +8,7 @@ using UnityEngine;
 public class TwitchChatClient : MonoBehaviour
 {
     [Header("Configuration")]
-    [SerializeField] public string channel = "dogxwillxhuntx";
+    [SerializeField] public string channel = "bashbunni";
     
     [Header("Reconnection")]
     [SerializeField] private float reconnectDelay = 5.0f; // Delay in seconds before a reconnect attempt
@@ -78,6 +78,7 @@ public class TwitchChatClient : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Failed to connect to Twitch: {e.Message}");
+            Debug.LogException(e, this);
             // Disconnect will set isConnected = false, the timer is already set for the next retry
             Disconnect();
         }
@@ -101,8 +102,9 @@ public class TwitchChatClient : MonoBehaviour
             catch (Exception e)
             {
                 Debug.LogError($"Error reading from Twitch: {e.Message}");
+                Debug.LogException(e, this);
                 // Break the loop on error, which will trigger Disconnect()
-                break;
+                // break;
             }
             
             yield return null;
@@ -114,38 +116,72 @@ public class TwitchChatClient : MonoBehaviour
     
     void ProcessIRCMessage(string rawMessage)
     {
-        // Handle PING to keep connection alive
-        if (rawMessage.StartsWith("PING"))
+        Debug.Log($"rawMessage: {rawMessage}");
+        try
         {
-            string pongResponse = rawMessage.Replace("PING", "PONG");
-            writer.WriteLine(pongResponse);
+            // Handle PING to keep connection alive
+            if (rawMessage.StartsWith("PING"))
+            {
+                string pongResponse = rawMessage.Replace("PING", "PONG");
+                Debug.Log($"pongResponse: {pongResponse}");
+                writer.WriteLine(pongResponse);
+                return;
+            }
+        } catch (Exception e)
+        {
+            Debug.LogError($"ProcessIRCMessage1 - Error reading from Twitch: {e.Message} - {e.StackTrace}");
+            Debug.LogException(e, this);
             return;
         }
         
-        // Handle chat messages (PRIVMSG)
-        if (rawMessage.Contains("PRIVMSG"))
+        try
         {
-            var chatMessage = ParsePrivMsg(rawMessage);
-            if (!string.IsNullOrEmpty(chatMessage.username))
+            // Handle chat messages (PRIVMSG)
+            if (rawMessage.Contains("PRIVMSG"))
             {
-                OnMessageReceived?.Invoke(chatMessage);
+                var chatMessage = ParsePrivMsg(rawMessage);
+                if (chatMessage.username != null && !string.IsNullOrEmpty(chatMessage.username))
+                {
+                    OnMessageReceived?.Invoke(chatMessage);
+                }
             }
+        } catch (Exception e)
+        {
+            Debug.LogError($"ProcessIRCMessage2 - Error reading from Twitch: {e.Message}");
+            Debug.LogException(e, this);
+            return;
         }
         
-        // Handle User Notices (subs, raids, etc)
-        if (rawMessage.Contains("USERNOTICE"))
+        try
         {
-            var noticeMessage = ParseUserNotice(rawMessage);
-            if (!string.IsNullOrEmpty(noticeMessage.username))
+            // Handle User Notices (subs, raids, etc)
+            if (rawMessage.Contains("USERNOTICE"))
             {
-                OnMessageReceived?.Invoke(noticeMessage);
+                var noticeMessage = ParseUserNotice(rawMessage);
+                if (!string.IsNullOrEmpty(noticeMessage.username))
+                {
+                    OnMessageReceived?.Invoke(noticeMessage);
+                }
             }
+        } catch (Exception e)
+        {
+            Debug.LogError($"ProcessIRCMessage3 - Error reading from Twitch: {e.Message}");
+            Debug.LogException(e, this);
+            return;
         }
         
-        // Handle successful connection confirmation
-        if (rawMessage.Contains("366")) // End of /NAMES list - successful join
+        try
         {
-            Debug.Log("Successfully joined Twitch chat channel");
+            // Handle successful connection confirmation
+            if (rawMessage.Contains("366")) // End of /NAMES list - successful join
+            {
+                Debug.Log("Successfully joined Twitch chat channel");
+            }
+        } catch (Exception e)
+        {
+            Debug.LogError($"ProcessIRCMessage4 - Error reading from Twitch: {e.Message}");
+            Debug.LogException(e, this);
+            return;
         }
     }
     

@@ -54,9 +54,17 @@ public class ChatAvatar : MonoBehaviour
 
         infoObject.text = $"{currentStrength}";
         
-        handObject = GetComponentInChildren<Pet>().gameObject;
-        handObject.SetActive(false);
-       //- toastObject.gameObject.SetActive(false);
+        var petComponent = GetComponentInChildren<Pet>();
+        if (petComponent == null)
+        {
+            Debug.LogWarning($"ChatAvatar '{username}' is missing a Pet child object.", this);
+        }
+        else
+        {
+            handObject = petComponent.gameObject;
+            handObject.SetActive(false);
+        }
+        //- toastObject.gameObject.SetActive(false);
         
         ApplyUniqueColor();
         
