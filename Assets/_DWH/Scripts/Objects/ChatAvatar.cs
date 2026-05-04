@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
 public class ChatAvatar : MonoBehaviour
@@ -18,6 +19,9 @@ public class ChatAvatar : MonoBehaviour
     [Header("Despawn Settings")]
     [SerializeField] private float despawnTimeMinutes = 30f;
     [SerializeField] private GameObject nameTagObject;
+    [SerializeField] private TMP_Text infoObject;
+    [SerializeField] private TMP_Text toastObject;
+    private GameObject handObject;
     
     private string username;
     private DateTime lastActivityTime;
@@ -33,8 +37,9 @@ public class ChatAvatar : MonoBehaviour
     private AvatarFamily avatarFamily;
     public float currentStrength;
     public bool OnVIP;
-
-
+    private bool isPetting = false;
+    private bool isToasting = false;
+    
     public string Username => username;
     public DateTime LastActivityTime => lastActivityTime;
     
@@ -46,6 +51,13 @@ public class ChatAvatar : MonoBehaviour
         this.cameraToLook = cameraToLook;
         avatarFamily = family;
         currentStrength = family.strength;
+
+        infoObject.text = $"{currentStrength}";
+        
+        handObject = GetComponentInChildren<Pet>().gameObject;
+        handObject.SetActive(false);
+       //- toastObject.gameObject.SetActive(false);
+        
         ApplyUniqueColor();
         
         CreateNameTag();
@@ -53,7 +65,34 @@ public class ChatAvatar : MonoBehaviour
         
         SetupWalkBehavior(walkBounds);
     }
-    
+
+    private void Update()
+    {
+        if (isPetting)
+        {
+            var animator = handObject.GetComponent<Animator>();
+            var isPetDone = !animator.GetCurrentAnimatorStateInfo(0).IsName("Pet");
+
+            if (isPetDone)
+            {
+                handObject.SetActive(false);
+                isPetting = false;
+            }
+        }
+
+        // if (!isToasting) return;
+        // {
+        //     var animator = toastObject.GetComponent<Animator>();
+        //     var isToastDone = !animator.GetCurrentAnimatorStateInfo(0).IsName("Toast");
+        //
+        //     if (isToastDone)
+        //     {
+        //         toastObject.gameObject.SetActive(false);
+        //         isToasting = false;
+        //     }
+        // }
+    }
+
     public void UpdateActivity(ChatMessage newMessage)
     {
         messageData = newMessage;
@@ -105,8 +144,7 @@ public class ChatAvatar : MonoBehaviour
             transform.SetParent(vipRock);
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
-            //walkBehavior.EnqueueTarget(vipRock.position);
-            //walkBehavior.StartWalking();
+            
             vipRockTarget = vipRock; // Store reference for when we arrive
             OnVIP = true;
             CommandsManager commandsManager = FindObjectOfType<CommandsManager>();
@@ -206,23 +244,42 @@ public class ChatAvatar : MonoBehaviour
     {
         currentStrength += 5;
         
+        infoObject.text = $"{currentStrength}";
+        
+        DoToast("+5");
+
         if (currentStrength >= avatarFamily.strength + 25f)
         {
             OnVomited();
         }
     }
-    
+
+    private void DoToast(string toastText)
+    {
+       // toastObject.gameObject.SetActive(true);
+        toastObject.GetComponent<Animator>().SetTrigger("Toast");
+        toastObject.text = toastText;
+      //  isToasting = true;
+    }
+
     public void OnPetted()
     {
-        if (currentStrength - 5 >= avatarFamily.strength)
+        handObject.SetActive(true);
+        handObject.GetComponent<Animator>().SetTrigger("Pet");
+
+        if (currentStrength - 3 >= avatarFamily.strength)
         {
-            currentStrength -= 5;
+            currentStrength -= 3;
+            infoObject.text = $"{currentStrength}";
+            DoToast("-3");
         }
     }
     
     private void OnVomited()
     {
-        currentStrength = avatarFamily.strength * 0.8f;
+        DoToast("Base Strength -20");
+        currentStrength = avatarFamily.strength * 0.6f;
+        infoObject.text = $"{currentStrength}";
     }
 
     private void ApplyUniqueColor()
@@ -352,7 +409,7 @@ public class ChatAvatar : MonoBehaviour
     private void CreateNameTag()
     {
         // Add TextMeshPro component
-        nameTag = nameTagObject.GetComponent<TextMeshPro>();
+        nameTag = nameTagObject.GetComponent<TMP_Text>();
         nameTag.text = username;
         // Color will be set in ApplyAvatarEffects() based on user status
         // Make name tag always face camera

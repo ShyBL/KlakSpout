@@ -36,7 +36,7 @@ public class DebugConsole : MonoBehaviour
     [SerializeField] private float logLineHeight = 20f;
     [SerializeField] private int logFontSize = 16;
     [SerializeField] private int maxLogEntries = 1000;
-    [SerializeField] private bool showDebugConsole = false;
+    [SerializeField] public bool showDebugConsole = false;
 
     // State for avatar options
     private ChatAvatar selectedAvatarObject = null;
@@ -55,6 +55,11 @@ public class DebugConsole : MonoBehaviour
        
     }
 
+    public void ToggleConsole()
+    {
+        showDebugConsole = !showDebugConsole;
+    }
+    
     private void OnEnable()
     {
         Application.logMessageReceived += HandleLog;
@@ -88,12 +93,14 @@ public class DebugConsole : MonoBehaviour
         float consolePanelWidth = Screen.width - consolePanelX - panelMargin;
 
         // Avatar Management Panel
-        DrawAvatarPanel();
+        
 
         if (showDebugConsole)
         {
             // Debug Console Panel
-            DrawConsolePanel(consolePanelX, consolePanelWidth);
+            
+            DrawAvatarPanel();
+            //DrawConsolePanel(consolePanelX, consolePanelWidth);
         }
        
         

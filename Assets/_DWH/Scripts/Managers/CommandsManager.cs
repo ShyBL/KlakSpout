@@ -16,6 +16,9 @@ public class CommandsManager : MonoBehaviour
     
     [Header("VIP Rock Settings")]
     [SerializeField] private Transform vipRock;
+
+    [SerializeField] private Animator fightAnimator;
+
     // [SerializeField] private float minimumScaleRequired = 2f;
    
     [Header("References")]
@@ -202,7 +205,7 @@ public class CommandsManager : MonoBehaviour
 
     private void HandlePetCommand(string username, string command)
     {
-// Check if the user's avatar is active
+        // Check if the user's avatar is active
         ChatAvatar userAvatar = FindAvatarByUsername(username);
         if (userAvatar == null)
         {
@@ -210,38 +213,53 @@ public class CommandsManager : MonoBehaviour
             return;
         }
     
-        // Parse the target username from the command
-        string[] commandParts = command.Split(' ');
-        if (commandParts.Length < 2)
+        if (vipRock.childCount == 0)
         {
-            Debug.Log($"@{username} Please specify who you want to pet! Usage: !pet username");
+            Debug.Log($"@{username} The VIP rock is currently NOT occupied!");
             return;
         }
-    
-        // Get the target username and clean it up
-        string targetUsername = commandParts[1].Trim();
-    
-        // Remove @ symbol if present
-        if (targetUsername.StartsWith("@"))
-        {
-            targetUsername = targetUsername.Substring(1);
-        }
-    
-        // Check if trying to pet themselves
-        if (targetUsername.Equals(username, System.StringComparison.OrdinalIgnoreCase))
-        {
-            Debug.Log($"@{username} You cannot pet yourself!");
-            return;
-        }
-    
-        // Find the target avatar
-        ChatAvatar targetAvatar = FindAvatarByUsername(targetUsername);
-        if (targetAvatar == null)
-        {
-            Debug.Log($"@{username} Could not find an active avatar for @{targetUsername}!");
-            return;
-        }
-    
+        
+        // // Parse the target username from the command
+        // string[] commandParts = command.Split(' ');
+        // if (commandParts.Length < 2)
+        // {
+        //     Debug.Log($"@{username} Please specify who you want to pet! Usage: !pet username");
+        //     return;
+        // }
+        //
+        // // Get the target username and clean it up
+        // string targetUsername = commandParts[1].Trim();
+        //
+        // // Remove @ symbol if present
+        // if (targetUsername.StartsWith("@"))
+        // {
+        //     targetUsername = targetUsername.Substring(1);
+        // }
+        //
+        // // Check if trying to pet themselves
+        // if (targetUsername.Equals(username, System.StringComparison.OrdinalIgnoreCase))
+        // {
+        //     Debug.Log($"@{username} You cannot pet yourself!");
+        //     return;
+        // }
+        //
+        // // Find the target avatar
+        // ChatAvatar targetAvatar = FindAvatarByUsername(targetUsername);
+        // if (targetAvatar == null)
+        // {
+        //     Debug.Log($"@{username} Could not find an active avatar for @{targetUsername}!");
+        //     return;
+        // }
+        
+        // if (targetAvatar.transform.parent != vipRock)
+        // {
+        //     Debug.Log($"@{username} You cannot pet someone not on the rock!");
+        //     return;   
+        // }
+
+        var targetAvatar = vipRock.GetChild(0).gameObject;
+        var targetUsername = targetAvatar.GetComponent<ChatAvatar>().Username;
+        
         // Execute the pet action
         avatarManager.PetAvatar(targetUsername);
         Debug.Log($"@{username} pets @{targetUsername}!");
@@ -257,13 +275,6 @@ public class CommandsManager : MonoBehaviour
             return;
         }
     
-        // Check if avatar is big enough
-        // if (userAvatar.avatarTransform.localScale.x < minimumScaleRequired)
-        // {
-        //     SendAutoMessage($"@{username} Your avatar needs to be bigger! Current size: {userAvatar.transform.localScale.x:F1}, Required: {minimumScaleRequired}");
-        //     return;
-        // }
-    
         // Check if rock is occupied OR someone is heading there
         if (vipRock.childCount > 0)
         {
@@ -271,15 +282,7 @@ public class CommandsManager : MonoBehaviour
             Debug.Log($"@{username} The VIP rock is currently occupied by @{currentVip.Username}! Use !fight to challenge them!");
             return;
         }
-    
-        // if (someoneHeadingToRock)
-        // {
-        //     SendAutoMessage($"@{username} @{usernameHeadingToRock} is already heading to the VIP rock! Wait for them to arrive or use !fight!");
-        //     return;
-        // }
-        //
-        // // Set the tracking variables
-        // someoneHeadingToRock = true;
+        
         usernameHeadingToRock = username;
     
         // Move avatar to VIP rock
@@ -315,14 +318,14 @@ public class CommandsManager : MonoBehaviour
             Debug.Log($"@{username} Your avatar is not currently active!");
             return;
         }
-        
+
         // Check if rock is vacant
         if (vipRock.childCount == 0)
         {
             Debug.Log($"@{username} The VIP rock is empty! Use !vip to claim it!");
             return;
         }
-        
+
         // Find current VIP
         ChatAvatar currentVip = vipRock.GetChild(0).GetComponent<ChatAvatar>();
         if (currentVip == null)
@@ -330,30 +333,51 @@ public class CommandsManager : MonoBehaviour
             Debug.LogError("VIP rock has a child but no ChatAvatar component!");
             return;
         }
-        
+
         // Compare strength
         float challengerStrength = challengerAvatar.currentStrength;
         float currentVipStrength = currentVip.currentStrength;
-        
-        if (challengerStrength > currentVipStrength)
+
+        // Hide avatars before animation
+        currentVip.gameObject.SetActive(false);
+        challengerAvatar.gameObject.SetActive(false);
+
+        // Start animation and delay logic
+        StartCoroutine(PlayFightAnimationThen(() =>
         {
-            // Challenger wins!
-            string defeatedUsername = currentVip.Username;
-            
-            // Remove current VIP from rock
-            RemoveAvatarFromVipRock(currentVip);
-            
-            // Move challenger to rock
-            MoveAvatarToVipRock(challengerAvatar);
-            
-            Debug.Log($"@{username} (size: {challengerStrength:F1}) has defeated @{defeatedUsername} (size: {currentVipStrength:F1}) and claimed the VIP rock! 🥊👑");
-        }
-        else
-        {
-            // Challenger loses
-            Debug.Log($"@{username} (size: {challengerStrength:F1}) challenged @{currentVip.Username} (size: {currentVipStrength:F1}) but was too small to win! 💪");
-        }
+            fightAnimator.SetBool("Fight", false);
+            currentVip.gameObject.SetActive(true);
+            challengerAvatar.gameObject.SetActive(true);
+
+            if (challengerStrength > currentVipStrength)
+            {
+                // Challenger wins
+                RemoveAvatarFromVipRock(currentVip);
+                MoveAvatarToVipRock(challengerAvatar);
+
+                Debug.Log($"@{username} (strength: {challengerStrength:F1}) has defeated @{currentVip.Username} (strength: {currentVipStrength:F1}) and claimed the VIP rock! 🥊👑");
+            }
+            else
+            {
+                // Challenger loses
+                Debug.Log($"@{username} (strength: {challengerStrength:F1}) challenged @{currentVip.Username} (strength: {currentVipStrength:F1}) but was too small to win! 💪");
+            }
+        }));
     }
+    
+    private System.Collections.IEnumerator PlayFightAnimationThen(System.Action onComplete)
+    {
+        fightAnimator.SetBool("Fight",true);
+
+        // Wait for the animation to finish
+       // var clipInfo = fightAnimator.GetCurrentAnimatorClipInfo(0);
+      //  float animationLength = clipInfo[1].clip.length;
+
+        yield return new WaitForSeconds(6f);
+
+        onComplete?.Invoke();
+    }
+
     
     private ChatAvatar FindAvatarByUsername(string username)
     {
